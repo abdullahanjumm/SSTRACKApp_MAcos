@@ -698,7 +698,7 @@ class GUIApp:
                         self.updateSettings()
                 else:
                     print(
-                        f"Failed to get data: {response.status_code} - {response.text}")
+                        f"Failed to get data from:/superAdmin/Settings {response.status_code} - {response.text}")
                     return "N/A"
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -1328,7 +1328,7 @@ class GUIApp:
                                                 break
 
                                         else:
-                                            print(f"Failed to get data: {response.status_code} - {response.text}")
+                                            print(f"Failed to get data:/addScreenshotsold {response.status_code} - {response.text}")
                                             break
 
                                 except requests.exceptions.RequestException as internet_error:
@@ -1393,7 +1393,7 @@ class GUIApp:
                                                 self.fetch_data()
                                            
                                         else:
-                                            print(f"Failed to get data: {response.status_code} - {response.text}")
+                                            print(f"Failed to get data:addScreenshots {response.status_code} - {response.text}")
                                             count += 1
                                             if count >= 3:
                                                 # Skip this item for now and move to the next one
@@ -1627,7 +1627,7 @@ class GUIApp:
                         self.hoursLength()
                     else:
                         print(
-                            f"Failed to get data: {response.status_code} - {response.text}")
+                            f"Failed to get data:fetch_data {response.status_code} - {response.text}")
 
         except Exception as e:
             print(f"Error occured while fetching data: {e}")
