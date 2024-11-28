@@ -35,7 +35,7 @@ from bson import ObjectId
 # from infi.systray import SysTrayIcon
 # from infi.systray.traybar import PostMessage, WM_CLOSE
 import shutil
-
+from ActivityMonitor import ActivityMonitor
 # Import platform-specific libraries
 if platform.system() == "Windows":
     import pygetwindow as gw
@@ -56,7 +56,7 @@ class GUIApp:
         self.is_timer_running = False
         self.screenshot_count = 0
         self.root = root
-        self.root.title("SSTRackdddddd")
+        self.root.title("SSTRack_under_construction")
         self.root.geometry("700x340")
         self.root.configure(bg="#FFFFFF")
         self.root.resizable(False, False)
@@ -96,7 +96,8 @@ class GUIApp:
         self.minutes='0m'
         # self.check_for_update()
         self.check_for_update_lock = threading.Lock()  # Initialize the lock
-
+        self.lock = threading.Lock()
+        self.check_activity_lock = threading.Lock() 
         self.percentage = 0
         # Initialize the overall report timer (but don't start it yet)
         self.overall_report = ""  # Initialize an empty string to store the report
@@ -382,7 +383,7 @@ class GUIApp:
         threading.Thread(target=self.start_listeners, daemon=True).start()        
         # self.userProject()
         # self.fetch_projects()
-
+        self.activity_monitor = ActivityMonitor()
                # Add the checkboxes for startup and auto-start functionality
         self.launch_monitor_var = tk.BooleanVar()
         self.auto_start_var = tk.BooleanVar()
@@ -1196,81 +1197,73 @@ class GUIApp:
 
 
 
-    def check_mouse_activity(self):
-        """Check for mouse movement."""
-        try:
-            current_mouse_position = pyautogui.position()
-            if current_mouse_position != self.last_mouse_position:
-                self.activity_flag = True
-                self.last_mouse_position = current_mouse_position
-            print(f"Mouse activity detected: {self.activity_flag}")
-        except Exception as e:
-            print(f"Error in mouse activity detection: {e}")
-
-
-
-    def check_keyboard_activity(self):
-        """Check if any key is pressed."""
-        try:
-            # Detect if any key is pressed
-            if keyboard.is_pressed():  # No hotkey argument required for detecting general activity
-                self.activity_flag = True
-                print("Keyboard activity detected.")
-        except Exception as e:
-            print(f"Error in keyboard activity detection: {e}")
-
-
 
     def check_activity(self):
         """Track user activity at regular intervals."""
         try:
+            print("Starting activity check loop...")
             self.startTime = datetime.datetime.now(pytz.UTC)
             while self.is_timer_running:
+                print("Starting new iteration of activity check.")
+    
                 with self.check_activity_lock:
-                    # Reset activity flag
-                    self.activity_flag = False
-
+                    print("Acquired check_activity_lock.")
+    
                     # Check for mouse and keyboard activity
-                    self.check_mouse_activity()
-                    self.check_keyboard_activity()
-
+                    self.activity_monitor.check_mouse_activity()
+                    self.activity_monitor.check_keyboard_activity()
+    
                     # Log activity detection
-                    print(f"Activity flag: {self.activity_flag}")
-
+                    print(f"Activity flag after checks: {self.activity_monitor.activity_flag}")
+                    
                     # Update intervals
                     self.total_intervals += 1
-                    if self.activity_flag:
+    
+                    if self.activity_monitor.activity_flag:  # Use the activity flag from the monitor
                         self.active_intervals += 1
-
-                    # Calculate percentage every `activityinterval` intervals
-                    if self.total_intervals >= self.activityinterval:
-                        if self.total_intervals > 0:
-                            self.percentage = (self.active_intervals / self.total_intervals) * 100
-                        else:
-                            self.percentage = 0
-                        print(f"Calculated percentage: {self.percentage}")
-
-                        # Reset intervals
-                        self.total_intervals = 0
-                        self.active_intervals = 0
-
-                        # Handle activity based on percentage
-                        print("Starting screenshots_data thread...")
-                        threading.Thread(target=self.screenshots_data, daemon=True).start()
-                        if self.percentage == 0:
-                            self.total += 1
-                            if self.total >= int(self.autoPauseTrackingAfter / self.frequency):
-                                print("All of the last intervals have 0 activity. Pausing...")
-                                threading.Thread(target=self.click_pause_button, daemon=True).start()
-                                print("Monitor Paused: No activity detected. Please start again!")
-                        else:
-                            self.total = 0
-
-                    # Sleep for the interval duration (10 seconds)
-                    time.sleep(10)
-
+                        print(f"Active intervals: {self.active_intervals}")
+    
+                # Calculate percentage every `activityinterval` intervals
+                if self.total_intervals >= self.activityinterval:
+                    if self.total_intervals > 0:
+                        self.percentage = (self.active_intervals / self.total_intervals) * 100
+                    else:
+                        self.percentage = 0
+    
+                    print(f"Calculated percentage: {self.percentage}")
+    
+                    # Reset intervals
+                    self.total_intervals = 0
+                    self.active_intervals = 0
+                    print("Resetting total and active intervals.")
+    
+                    # Handle activity based on percentage
+                    threading.Thread(target=self.screenshots_data, daemon=True).start()
+                    if self.percentage == 0:
+                        self.total += 1
+                        if self.total >= int(self.autoPauseTrackingAfter / self.frequency):
+                            print("Pausing due to no activity.")
+                    else:
+                        self.total = 0
+                        print("Activity detected, resetting total counter.")
+    
+                # Reset the activity flag after processing the interval
+                # Only reset if no activity was detected within the last 10 seconds
+                if time.time() - self.startTime.timestamp() > 10:
+                    with self.lock:
+                        self.activity_monitor.activity_flag = False
+                        print(f"Resetting activity flag: {self.activity_monitor.activity_flag}")
+    
+                # Sleep for the interval duration (10 seconds)
+                print("Sleeping for 10 second...")
+                time.sleep(10)
+    
         except Exception as e:
-            print(f"An error occurred in check_activity: {e}")    
+            print(f"An error occurred in check_activity: {e}")
+    
+
+   
+   
     
     
     def addScreenshotsold(self):
