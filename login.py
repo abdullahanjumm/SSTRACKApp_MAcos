@@ -24,10 +24,10 @@ class LoginApp:
         self.root.geometry(f"700x500+{x_coordinate}+{y_coordinate}")
 
         # Load icons
-        self.play_icon = PhotoImage(file='images/sstracklogo.png')
-        self.email_icon = PhotoImage(file='images/email.png')
-        self.password_icon = PhotoImage(file='images/password.png')
-        official_icon = self.resize_image('images/logopause.ico', 100, 100)
+        self.play_icon = PhotoImage(file='/Users/charlie/Downloads/SSTRACKApp/images/sstracklogo.png')
+        self.email_icon = PhotoImage(file='/Users/charlie/Downloads/SSTRACKApp/images/email.png')
+        self.password_icon = PhotoImage(file='/Users/charlie/Downloads/SSTRACKApp/images/password.png')
+        official_icon = self.resize_image('/Users/charlie/Downloads/SSTRACKApp/images/logopause.ico', 100, 100)
         self.root.iconphoto(True, official_icon)
 
         # Logo Frame

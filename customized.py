@@ -63,11 +63,11 @@ class GUIApp:
         # Set application icon
                 # Resize the image and get both the PhotoImage and PIL Image objects
         # self.official_icon, self.icon_for_tray = self.resize_image('images/logo.png', 100, 100, 10)
-        _, self.icon_for_tray = self.resize_image('images/logoTray.png', 50, 50, 5)
+        _, self.icon_for_tray = self.resize_image('/Users/charlie/Downloads/SSTRACKApp/images/logoTray.png', 50, 50, 5)
         self.icon = self.icon_for_tray
         
         self.official_icon, _ = self.resize_image(
-            'images/logo.png', 100, 100, 10)
+            '/Users/charlie/Downloads/SSTRACKApp/images/logo.png', 100, 100, 10)
         self.root.iconphoto(True, self.official_icon)
         self.forgotTimer = False
         self.projectId = None  # Variable to store selected project ID
@@ -123,19 +123,19 @@ class GUIApp:
         frame0 = Frame(self.root, width=700, height=80, bg="#0E4772")
         frame0.place(x=0, y=0)
 
-        self.logo_icon = ImageTk.PhotoImage(file='images/sstracklogo.png')
+        self.logo_icon = ImageTk.PhotoImage(file='/Users/charlie/Downloads/SSTRACKApp/images/sstracklogo.png')
         logo_label = Label(frame0, image=self.logo_icon, bg="#0E4772")
         logo_label.place(x=20, y=10)
 
         # Load setting icon with margin using the new method
-        self.setting_icon = self.load_icon_with_margin('images/Settings_Icon.png', 20, 20, margin=10)
+        self.setting_icon = self.load_icon_with_margin('/Users/charlie/Downloads/SSTRACKApp/images/Settings_Icon.png', 20, 20, margin=10)
         self.setting_label = tk.Label(frame0, image=self.setting_icon, bg="#0E4772", cursor='hand2')
         self.setting_label.place(x=600, y=18)
         self.setting_label.bind("<Button-1>", lambda e: self.open_settings())
 
 
         # Load logout icon with margin using the new method
-        self.logout_icon = self.load_icon_with_margin('images/log_out_white.png', 20, 20, margin=10)
+        self.logout_icon = self.load_icon_with_margin('/Users/charlie/Downloads/SSTRACKApp/images/log_out_white.png', 20, 20, margin=10)
         self.logout_button = tk.Label(frame0, image=self.logout_icon, bg="#0E4772", cursor='hand2')
         self.logout_button.place(x=633, y=18)
         self.logout_button.bind("<Button-1>", lambda e: self.logout()) 
@@ -160,7 +160,7 @@ class GUIApp:
         self.username.place(x=73, y=8)
 
         self.verified_icon, _ = self.resize_image(
-            'images/verified.png', 35, 35, 10)      
+            '/Users/charlie/Downloads/SSTRACKApp/images/verified.png', 35, 35, 10)      
         # Display the verified icon using a Label instead of a Button
         self.verified_label = tk.Label(frame2, image=self.verified_icon, bg="#ffffff", border=0)
         self.verified_label.place(x=20, y=0)
@@ -226,7 +226,7 @@ class GUIApp:
         self.selected_project.trace("w", self.callback)  # Monitor changes in selection
 
         # Load dropdown icon
-        self.vector = PhotoImage(file="images/Vector.png")
+        self.vector = PhotoImage(file="/Users/charlie/Downloads/SSTRACKApp/images/Vector.png")
 
         self.button_frame = tk.Frame(self.frame, bg="#0E4772", height=30, width=140)  # Set fixed height and width
         self.button_frame.place(x=390, y=6)  # Place at specific coordinates
@@ -263,10 +263,10 @@ class GUIApp:
         frame1.place(x=0, y=230)
 
         # Resize the images
-        self.play_icon, _ = self.resize_image('images/playButton.png', 70, 70, 10)
-        self.pause_icon_grey, _ = self.resize_image('images/Pause_Icon_Grey.png', 60, 60, 10)
-        self.play_icon_grey, _ = self.resize_image('images/Play_Icon_Grey.png', 70, 70, 10)
-        self.pause_icon, _ = self.resize_image('images/Pause_Red.png', 60, 60, 10)
+        self.play_icon, _ = self.resize_image('/Users/charlie/Downloads/SSTRACKApp/images/playButton.png', 70, 70, 10)
+        self.pause_icon_grey, _ = self.resize_image('/Users/charlie/Downloads/SSTRACKApp/images/Pause_Icon_Grey.png', 60, 60, 10)
+        self.play_icon_grey, _ = self.resize_image('/Users/charlie/Downloads/SSTRACKApp/images/Play_Icon_Grey.png', 70, 70, 10)
+        self.pause_icon, _ = self.resize_image('/Users/charlie/Downloads/SSTRACKApp/images/Pause_Red.png', 60, 60, 10)
                # Create the play button
         # Create a Canvas widget to hold the images (transparent effect)
         self.canvas = tk.Canvas(frame1, width=700, height=110, bg="#0E4772", highlightthickness=0)
@@ -337,7 +337,7 @@ class GUIApp:
         self.colon_label.place(x=colon_x, y=47)
         self.minute_label.place(x=minute_x, y=47)
 
-        self.TIMELINE, _ = self.resize_image('images/timeline.png', 160, 40, 0)
+        self.TIMELINE, _ = self.resize_image('/Users/charlie/Downloads/SSTRACKApp/images/timeline.png', 160, 40, 0)
         TIMELINE_label = tk.Button(frame1, image=self.TIMELINE, bg="#0E4772",
                                    border=0, command=self.view_Timeline, cursor='hand2')
         TIMELINE_label.place(x=480, y=40)
@@ -821,7 +821,7 @@ class GUIApp:
 
     def open_settings(self):
            # Resize the icon to a smaller size
-        self.settings_icon, _ = self.resize_image('images/logoTray.png', 20, 20, 10)
+        self.settings_icon, _ = self.resize_image('/Users/charlie/Downloads/SSTRACKApp/images/logoTray.png', 20, 20, 10)
 
         # Create a new Toplevel window for the popup
         settings_popup = tk.Toplevel(self.root)
@@ -1965,7 +1965,7 @@ class GUIApp:
         print("Starting click_play_button")
     
         # Update icon (run on the main thread)
-        self.root.wm_iconbitmap("images/animatedlogo.ico")
+        self.root.wm_iconbitmap("/Users/charlie/Downloads/SSTRACKApp/images/animatedlogo.ico")
     
         if self.updated:
             confirmation = messagebox.askyesno(
@@ -2095,7 +2095,7 @@ class GUIApp:
         try:
             # Update application icon on the main thread
             print("Pausing the timer...")
-            self.root.wm_iconbitmap("images/pauseico.ico")
+            self.root.wm_iconbitmap("/Users/charlie/Downloads/SSTRACKApp/images/pauseico.ico")
 
             with self.click_pause_button_lock:
                 if self.is_timer_running:

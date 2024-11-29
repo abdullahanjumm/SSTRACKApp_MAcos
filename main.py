@@ -32,6 +32,7 @@ def bring_window_to_foreground():
         time.sleep(0.1)  # Add a small delay to allow mutex release
 
 def main():
+    print("Current Working Directory:", os.getcwd())
     # Dynamically resolve the base directory
     BASE_DIR = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
 
