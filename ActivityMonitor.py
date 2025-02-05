@@ -42,6 +42,7 @@ class ActivityMonitor:
         try:
             event_tap = Quartz.CGEventTapCreate(
                 Quartz.kCGSessionEventTap,
+                # Quartz.kCGHIDEventTap,
                 Quartz.kCGHeadInsertEventTap,
                 Quartz.kCGEventTapOptionDefault,
                 Quartz.CGEventMaskBit(Quartz.kCGEventKeyDown),
@@ -50,9 +51,10 @@ class ActivityMonitor:
             )
 
             if not event_tap:
-                print("Failed to create event tap. Check permissions.")
+                print("❌ Failed to create event tap. Check permissions in System Preferences > Security & Privacy > Accessibility.")
                 return
-
+            else:
+                print("✅ Event tap created successfully.")
             # Create a run loop source
             run_loop_source = Quartz.CFMachPortCreateRunLoopSource(None, event_tap, 0)
             Quartz.CFRunLoopAddSource(Quartz.CFRunLoopGetCurrent(), run_loop_source, Quartz.kCFRunLoopCommonModes)
