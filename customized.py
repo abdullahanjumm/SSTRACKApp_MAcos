@@ -1,4 +1,5 @@
 from tkinter import *
+from tkinter import Toplevel
 from tkinter import messagebox
 import datetime
 from PIL import Image, ImageTk, ImageGrab, ImageDraw, ImageFont
@@ -13,7 +14,7 @@ import os
 import threading
 import io
 import platform
-from pynput import mouse, keyboard
+# from pynput import mouse, keyboard
 import sys
 import subprocess
 import webbrowser
@@ -59,7 +60,7 @@ class GUIApp:
         self.root.title("HOME")
         self.root.geometry("700x340")
         self.root.configure(bg="#FFFFFF")
-        self.root.resizable(False, False)
+        self.root.resizable(True, False)
         # Set application icon
         # Resize the image and get both the PhotoImage and PIL Image objects
         # self.official_icon, self.icon_for_tray = self.resize_image('images/logo.png', 100, 100, 10)
@@ -565,16 +566,16 @@ class GUIApp:
         # speaker.Speak("hi Welcome to S STRACK") # <--------- I added this line
 
         # Create mouse and keyboard listeners
-        self.mouse_listener = mouse.Listener(
-            on_move=self.on_move, on_click=self.on_click, on_scroll=self.on_scroll
-        )
-        self.keyboard_listener = keyboard.Listener(
-            on_press=self.on_press, on_release=self.on_release
-        )
-        self.total = 0
-        # Start the listeners
-        self.mouse_listener.start()
-        self.keyboard_listener.start()
+        # self.mouse_listener = mouse.Listener(
+        #     on_move=self.on_move, on_click=self.on_click, on_scroll=self.on_scroll
+        # )
+        # self.keyboard_listener = keyboard.Listener(
+        #     on_press=self.on_press, on_release=self.on_release
+        # )
+        # self.total = 0
+        # # Start the listeners
+        # self.mouse_listener.start()
+        # self.keyboard_listener.start()
         # Use a timer to call the functions after the window is shown
         # Start the listeners in a separate thread
         threading.Thread(target=self.start_listeners, daemon=True).start()
@@ -1670,39 +1671,39 @@ class GUIApp:
             print(f"An error occurred: {e}")
             return "N/A"
 
-    def refresh_tray_icon(self):
-        if self.icon:
-            # Stop the current icon
-            self.icon.stop()
-            time.sleep(0.1)  # Small delay to ensure proper cleanup
-            # Restart the tray icon
-            self.run_tray()
+    # def refresh_tray_icon(self):
+    #     if self.icon:
+    #         # Stop the current icon
+    #         self.icon.stop()
+    #         time.sleep(0.1)  # Small delay to ensure proper cleanup
+    #         # Restart the tray icon
+    #         self.run_tray()
 
 
-    def run_tray(self):
+    # def run_tray(self):
        
-        # Set up the tray icon with a click event to show the window
-        self.icon = Icon(
-            "my_app",
-            self.icon_for_tray,
-            "SSTRACK",
-            menu=Menu(
-                MenuItem("Show", self.show_window),  # Show window menu item
-                MenuItem("Quit", self.on_quit),  # Quit menu item
-            ),
-        )
+    #     # Set up the tray icon with a click event to show the window
+    #     self.icon = Icon(
+    #         "my_app",
+    #         self.icon_for_tray,
+    #         "SSTRACK",
+    #         menu=Menu(
+    #             MenuItem("Show", self.show_window),  # Show window menu item
+    #             MenuItem("Quit", self.on_quit),  # Quit menu item
+    #         ),
+    #     )
 
-        # Bind the click event to the tray icon to show the window
-        # self.icon._icon.visible = True  # Ensure the icon is visible
+    #     # Bind the click event to the tray icon to show the window
+    #     # self.icon._icon.visible = True  # Ensure the icon is visible
 
-        # Run the system tray in a separate thread
-        self.icon.run()
-        self.refresh_tray_icon()
-        # threading.Thread(target=self.icon.run, daemon=True).start()
+    #     # Run the system tray in a separate thread
+    #     self.icon.run()
+    #     self.refresh_tray_icon()
+    #     # threading.Thread(target=self.icon.run, daemon=True).start()
 
-    def start_tray(self):
-        """Start the tray in a separate thread"""
-        threading.Thread(target=self.run_tray, daemon=True).start()
+    # def start_tray(self):
+    #     """Start the tray in a separate thread"""
+    #     threading.Thread(target=self.run_tray, daemon=True).start()
 
     def screenshots_data(self):
         try:
@@ -1789,7 +1790,7 @@ class GUIApp:
                     # print("Acquired check_activity_lock.")
 
                     # Check for mouse and keyboard activity
-                    # self.activity_monitor.check_mouse_activity()
+                    self.activity_monitor.check_mouse_activity()
                     self.activity_monitor.check_keyboard_activity()
                     # Log activity detection
                     # print(f"Activity flag after checks: {self.activity_monitor.activity_flag}")
@@ -2521,7 +2522,7 @@ class GUIApp:
                         # Continue with the rest of your logic
                         self.current_date = datetime.date.today()
                         # Run the system tray in a separate thread
-                        self.start_tray()
+                        # self.start_tray()
                         # threading.Thread(target=self.run_tray, daemon=True).start()
                         # threading.Thread(
                         #     target=self.employeeSetting).start()
