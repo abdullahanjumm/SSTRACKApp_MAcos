@@ -5,7 +5,9 @@ from PIL import Image, ImageTk
 import pickle
 import webbrowser
 import os
+import sys
 from customized import GUIApp
+import tempfile
 
 
 class LoginApp:
@@ -23,11 +25,20 @@ class LoginApp:
         y_coordinate = int((screen_height / 2) - (500 / 2))
         self.root.geometry(f"700x500+{x_coordinate}+{y_coordinate}")
 
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.abspath(".")
         # Load icons
-        self.play_icon = PhotoImage(file='/Users/charlie/Downloads/SSTRACKApp/images/sstracklogo.png')
-        self.email_icon = PhotoImage(file='/Users/charlie/Downloads/SSTRACKApp/images/email.png')
-        self.password_icon = PhotoImage(file='/Users/charlie/Downloads/SSTRACKApp/images/password.png')
-        official_icon = self.resize_image('/Users/charlie/Downloads/SSTRACKApp/images/logopause.ico', 100, 100)
+        # self.play_icon = PhotoImage(file='images/sstracklogo.png')
+        self.play_icon = PhotoImage(file=os.path.join(base_path, 'images', 'sstracklogo.png'))
+        # self.email_icon = PhotoImage(file='images/email.png')
+        self.email_icon = PhotoImage(file=os.path.join(base_path, 'images', 'email.png'))
+        # self.password_icon = PhotoImage(file='images/password.png')
+        self.password_icon = PhotoImage(file=os.path.join(base_path, 'images', 'password.png'))
+        # official_icon = self.resize_image('images/logopause.ico', 100, 100)
+        official_icon = self.resize_image(LoginApp.resource_path('images/logopause.ico'), 100, 100)
+
         self.root.iconphoto(True, official_icon)
 
         # Logo Frame
@@ -104,6 +115,30 @@ class LoginApp:
 
         # Bind Enter key to login function
         self.root.bind("<Return>", self.perform_login)
+    
+    
+    @staticmethod
+    def get_app_dir():
+        """Get the directory where the executable is running."""
+        if getattr(sys, 'frozen', False):
+            return os.path.dirname(sys.executable)  # Running as an executable
+        return os.path.dirname(os.path.abspath(__file__))  # Running as a script
+    def resource_path(relative_path):
+        """ Get absolute path to resource, works for development and PyInstaller """
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS  # PyInstaller bundle path
+        else:
+            base_path = os.path.abspath(".")  # Normal script path
+
+        path = os.path.join(base_path, relative_path)
+
+        # Debugging: Print the path to check if it exists
+        print(f"Loading file: {path}")
+
+        if not os.path.exists(path):
+            print(f"Error: {path} not found!")
+
+        return path
 
     def resize_image(self, file_path, width, height):
         image = Image.open(file_path)
@@ -139,9 +174,10 @@ class LoginApp:
             self.Password.insert(0, 'Enter your password')
 
     def check_and_load_data(self):
-        if os.path.exists("new_data.pkl"):
+        data_path = os.path.join(LoginApp.get_app_dir(), "new_data.pkl")
+        if os.path.exists(data_path):
             try:
-                with open("new_data.pkl", "rb") as file:
+                with open(data_path, "rb") as file:
                     data = pickle.load(file)
                     print(f"Email: {data.get('email', 'No email found')}")
                     print(f"Password: {data.get('password', 'No password found')}")
@@ -177,12 +213,14 @@ class LoginApp:
             messagebox.showerror("Error", data["message"])
         else:
             # Login successful
+            data_file = os.path.join(LoginApp.get_app_dir(), "data.pkl")
+            new_data_file = os.path.join(LoginApp.get_app_dir(), "new_data.pkl")
             token = data["token"]
-            with open("data.pkl", "wb") as f:
+            with open(data_file, "wb") as f:
                 pickle.dump(token, f)
                 # Save email and password to new_data.pkl
             login_data = {"email": email_value, "password": password}
-            with open("new_data.pkl", "wb") as f:
+            with open(new_data_file, "wb") as f:
                 pickle.dump(login_data, f)
             self.root.destroy()
             second_page = GUIApp(Tk())

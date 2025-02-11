@@ -4,6 +4,7 @@ import pickle
 import platform
 import sys
 import time
+import subprocess
 
 # Conditional imports for Windows-specific modules
 if platform.system() == "Windows":
@@ -19,7 +20,13 @@ from customized import GUIApp
 WINDOW_TITLE = "SStrack"
 MUTEX_NAME = "myapp_InstanceMutex"
 
+def get_app_dir():
+    """Get the directory where the executable is running."""
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)  # Running as an executable
+    return os.path.dirname(os.path.abspath(__file__)) 
 def bring_window_to_foreground():
+    """Bring the existing application window to the foreground (Windows only)."""
     if platform.system() == "Windows":
         def enum_windows_callback(hwnd, pid):
             if win32gui.IsWindowVisible(hwnd) and win32process.GetWindowThreadProcessId(hwnd)[1] == pid:
@@ -33,8 +40,10 @@ def bring_window_to_foreground():
 
 def main():
     print("Current Working Directory:", os.getcwd())
+
     # Dynamically resolve the base directory
-    BASE_DIR = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+    BASE_DIR = get_app_dir()
+    print(f"App Directory: {BASE_DIR}")
 
     if platform.system() == "Windows":
         # Only create and check for the mutex on Windows

@@ -36,7 +36,7 @@ from ActivityMonitor import ActivityMonitor
 from pystray import Icon, Menu, MenuItem
 import shutil
 from plyer import notification
-from pync import Notifier
+# from pync import Notifier
 from tkinter import font
 # Import platform-specific libraries
 if platform.system() == "Windows":
@@ -60,14 +60,16 @@ class GUIApp:
         self.root.title("HOME")
         self.root.geometry("700x340")
         self.root.configure(bg="#FFFFFF")
-        self.root.resizable(True, False)
+        self.root.resizable(False, False)
         # Set application icon
         # Resize the image and get both the PhotoImage and PIL Image objects
         # self.official_icon, self.icon_for_tray = self.resize_image('images/logo.png', 100, 100, 10)
-        self.icon_for_tray = self.resize_image2("images/logoTray.png", 50, 50, 5)
+        # self.icon_for_tray = self.resize_image2("images/logoTray.png", 50, 50, 5)
+        self.icon_for_tray = self.resize_image2(self.resource_path("images/logoTray.png"), 50, 50, 5)
         self.icon = self.icon_for_tray
 
-        self.official_icon, _ = self.resize_image("images/logo.png", 100, 100, 10)
+        # self.official_icon, _ = self.resize_image("images/logo.png", 100, 100, 10)
+        self.official_icon, _ = self.resize_image(self.resource_path("images/logo.png"), 100, 100, 10)
         self.root.iconphoto(True, self.official_icon)
         self.forgotTimer = False
         self.projectId = None  # Variable to store selected project ID
@@ -127,21 +129,22 @@ class GUIApp:
         frame0 = Frame(self.root, width=700, height=80, bg="#0E4772")
         frame0.place(x=0, y=0)
 
-        self.logo_icon = ImageTk.PhotoImage(file='images/sstracklogo.png')
+        # self.logo_icon = ImageTk.PhotoImage(file='images/sstracklogo.png')
+        self.logo_icon = ImageTk.PhotoImage(file=self.resource_path("images/sstracklogo.png"))
         logo_label = Label(frame0, image=self.logo_icon, bg="#0E4772")
         logo_label.place(x=20, y=10)
 
         # Load setting icon with margin using the new method
-        self.setting_icon = self.load_icon_with_margin(
-            'images/Settings_Icon.png', 20, 20, margin=10)
+        # self.setting_icon = self.load_icon_with_margin('images/Settings_Icon.png', 20, 20, margin=10)
+        self.setting_icon = self.load_icon_with_margin(self.resource_path("images/Settings_Icon.png"), 20, 20, margin=10)
         self.setting_label = tk.Label(
             frame0, image=self.setting_icon, bg="#0E4772", cursor='hand2')
         self.setting_label.place(x=600, y=18)
         self.setting_label.bind("<Button-1>", lambda e: self.open_settings())
 
         # Load logout icon with margin using the new method
-        self.logout_icon = self.load_icon_with_margin(
-            'images/log_out_white.png', 20, 20, margin=10)
+        # self.logout_icon = self.load_icon_with_margin('images/log_out_white.png', 20, 20, margin=10)
+        self.logout_icon = self.load_icon_with_margin(self.resource_path('images/log_out_white.png'), 20, 20, margin=10)
         self.logout_button = tk.Label(
             frame0, image=self.logout_icon, bg="#0E4772", cursor='hand2')
         self.logout_button.place(x=633, y=18)
@@ -170,7 +173,8 @@ class GUIApp:
         )
         self.username.place(x=203, y=8)
 
-        self.verified_icon, _ = self.resize_image("images/verified.png", 35, 35, 10)
+        # self.verified_icon, _ = self.resize_image("images/verified.png", 35, 35, 10)
+        self.verified_icon, _ = self.resize_image(self.resource_path("images/verified.png"), 35, 35, 10)
         self.verified_label = tk.Label(
             frame2, image=self.verified_icon, bg="#ffffff", border=0)
         self.verified_label.place(x=150, y=0)
@@ -323,7 +327,8 @@ class GUIApp:
         self.selected_project.trace("w", self.callback)  # Monitor changes in selection
 
         # Load dropdown icon
-        self.vector = PhotoImage(file="images/down.png")
+        # self.vector = PhotoImage(file="images/down.png")
+        self.vector = PhotoImage(file=self.resource_path("images/down.png"))
 
         # Create dropdown button
         # self.button = tk.Button(
@@ -387,17 +392,21 @@ class GUIApp:
         frame1.place(x=0, y=230)
 
         # Resize the images
-        self.play_icon, _ = self.resize_image("images/playButton.png", 70, 70, 10)
+        # self.play_icon, _ = self.resize_image("images/playButton.png", 70, 70, 10)
+        self.play_icon, _ = self.resize_image(self.resource_path("images/playButton.png"), 70, 70, 10)
         self.pause_icon_grey, _ = self.resize_image(
-            "images/Pause_Icon_Grey.png", 60, 60, 10
+            # "images/Pause_Icon_Grey.png", 60, 60, 10
+            self.resource_path("images/Pause_Icon_Grey.png"), 60, 60, 10
         )
               # self.break_icon, _ = self.resize_image(
         #     "images/BreakButton.png", 60, 60, 10
         # )
         self.play_icon_grey, _ = self.resize_image(
-            "images/Play_Icon_Grey.png", 70, 70, 10
+            self.resource_path("images/Play_Icon_Grey.png"), 70, 70, 10
+            # "images/Play_Icon_Grey.png", 70, 70, 10
         )
-        self.pause_icon, _ = self.resize_image("images/Pause_Red.png", 60, 60, 10)
+        # self.pause_icon, _ = self.resize_image("images/Pause_Red.png", 60, 60, 10)
+        self.pause_icon, _ = self.resize_image(self.resource_path("images/Pause_Red.png"), 60, 60, 10)
         # Create the play button
         # Create a Canvas widget to hold the images (transparent effect)
         self.canvas = tk.Canvas(
@@ -520,7 +529,8 @@ class GUIApp:
         # self.colon_label.place(x=colon_x, y=47)
         # self.minute_label.place(x=minute_x, y=47)
 
-        self.TIMELINE, _ = self.resize_image("images/timeline.png", 160, 40, 0)
+        # self.TIMELINE, _ = self.resize_image("images/timeline.png", 160, 40, 0)
+        self.TIMELINE, _ = self.resize_image(self.resource_path("images/timeline.png"), 160, 40, 0)
         TIMELINE_label = tk.Button(
             frame1,
             image=self.TIMELINE,
@@ -598,15 +608,31 @@ class GUIApp:
         self.connect_to_server()
         self.getBreaktimes()
         self.getRemainingBreakTime()
+    
+    
+    
+    @staticmethod
+    def get_app_dir():
+        """Get the directory where the executable is running."""
+        if getattr(sys, 'frozen', False):
+            return os.path.dirname(sys.executable)  # Running as an executable
+        return os.path.dirname(os.path.abspath(__file__))  # Running as a script   
+    
+    @staticmethod
+    def get_data_file_path(filename):
+        """Return the full path of a file inside the app directory."""
+        return os.path.join(GUIApp.get_app_dir(), filename) 
+    @staticmethod
+    def resource_path(relative_path):
+        """ Get absolute path to resource, works for development and PyInstaller """
+        if getattr(sys, 'frozen', False):
+            # Running in a PyInstaller bundle
+            base_path = sys._MEIPASS
+        else:
+            # Running in a normal Python environment
+            base_path = os.path.abspath(".")
+        return os.path.join(base_path, relative_path)
 
-    # def notify_user(self):
-    #     try:
-    #         text='hi Welcome to S STRACK'
-    #         # Attempt to use voice functionality
-    #         self.speak_text(text)
-    #     except Exception as e:
-    #         # Fallback to a simple text notification
-    #         print(f"Notification: {text} {e}")
 
     # def speak_text(self, text):
     #     try:
@@ -1072,12 +1098,13 @@ class GUIApp:
 
                         # Attempt to remove each file
                         for file in files_to_remove:
+                            file_path = GUIApp.get_data_file_path(file)
                             try:
-                                os.remove(file)
+                                os.remove(file_path)
                             except FileNotFoundError:
-                                print(f"File not found: {file}")  # Ignore missing files
+                                print(f"File not found: {file_path}")  # Ignore missing files
                             except Exception as e:
-                                print(f"Error deleting {file}: {e}")
+                                print(f"Error deleting {file_path}: {e}")
 
                         self.logout()
                         return  # Exit function early
@@ -1127,8 +1154,9 @@ class GUIApp:
     def user_Data(self):
         try:
             # Load user token from a stored file
-            if os.path.isfile("data.pkl"):
-                with open("data.pkl", "rb") as f:
+            data_path = os.path.join(self.get_app_dir(), "data.pkl") 
+            if os.path.isfile(data_path):
+                with open(data_path, "rb") as f:
                     stored_data = pickle.load(f)
                     self.token = stored_data
             # Decode the Base64-encoded parts of the token
@@ -1152,6 +1180,10 @@ class GUIApp:
         except Exception as e:
             print(f"An error occurred: {e}")
             return "N/A"
+
+
+
+
 
     def open_settingsSS(self):
         # Create a new Toplevel window for settings
@@ -1244,7 +1276,7 @@ class GUIApp:
 
     def open_settings(self):
         # Resize the icon to a smaller size
-        self.settings_icon, _ = self.resize_image("images/logoTray.png", 20, 20, 10)
+        self.settings_icon, _ = self.resize_image(self.resource_path("images/logoTray.png"), 20, 20, 10)
 
         # Create a new Toplevel window for the popup
         settings_popup = tk.Toplevel(self.root)
@@ -1726,7 +1758,8 @@ class GUIApp:
                 active_window_url = self.get_active_window_hostname()
                 if active_window_url:
                     print(f"Active Window: {active_window_url}")
-                    with open("time_entry_id.pkl", "rb") as f:
+                    time_entry_id_path = GUIApp.get_data_file_path("time_entry_id.pkl")
+                    with open(time_entry_id_path, "rb") as f:
                         timeEntryId = pickle.load(f)
                         current_time = datetime.datetime.now(pytz.UTC)
                         formatted_time = current_time.strftime("%I-%M-%S-%p_%m-%d-%Y")
@@ -1734,9 +1767,10 @@ class GUIApp:
                         filename = f"screenshot_{formatted_time}_{self.user_id}"
                         print(filename)
 
-                        if os.path.isfile("screenshots_data.pkl"):
+                        # if os.path.isfile("screenshots_data.pkl"):
+                        if os.path.isfile(GUIApp.get_data_file_path("screenshots_data.pkl")):
                             try:
-                                with open("screenshots_data.pkl", "rb") as f:
+                                with open(GUIApp.get_data_file_path("screenshots_data.pkl"), "rb") as f:
                                     try:
                                         self.screenshot_data_list = pickle.load(f)
                                     except pickle.UnpicklingError as e:
@@ -1761,7 +1795,7 @@ class GUIApp:
                         "disabled": self.disabled,
                     }
                     self.screenshot_data_list.append(screenshots_data)
-                    with open("screenshots_data.pkl", "wb") as f:
+                    with open(GUIApp.get_data_file_path("screenshots_data.pkl"), "wb") as f:
                         pickle.dump(self.screenshot_data_list, f)
                     if len(self.trackingStart_list) > 0:
                         self.start_Timer()
@@ -1865,7 +1899,7 @@ class GUIApp:
                 if self.is_timer_running:
                     with self.screenshots_add_lock:
                         try:
-                            with open("screenshots_data.pkl", "rb") as f:
+                            with open(GUIApp.get_data_file_path("screenshots_data.pkl"), "rb") as f:
                                 self.screenshot_data_list = pickle.load(f)
 
                             if self.screenshot_data_list:
@@ -1903,7 +1937,7 @@ class GUIApp:
                                             # Reset index to 0
                                             index = 0
                                             with open(
-                                                "screenshots_data.pkl", "wb"
+                                                GUIApp.get_data_file_path("screenshots_data.pkl"), "wb"
                                             ) as f:
                                                 pickle.dump(
                                                     self.screenshot_data_list, f
@@ -2229,12 +2263,13 @@ class GUIApp:
 
                             # Attempt to remove each file
                             for file in files_to_remove:
+                                file_path = GUIApp.get_data_file_path(file)
                                 try:
-                                    os.remove(file)
+                                    os.remove(file_path)
                                 except FileNotFoundError:
-                                    print(f"File not found: {file}")  # Ignore missing files
+                                    print(f"File not found: {file_path}")  # Ignore missing files
                                 except Exception as e:
-                                    print(f"Error deleting {file}: {e}")
+                                    print(f"Error deleting {file_path}: {e}")
 
                             self.logout()
                             return  # Exit function early
@@ -2333,12 +2368,14 @@ class GUIApp:
             print("SSTRACKSetup.exe downloaded successfully.")
 
             try:
-                os.remove("data.pkl")
+                os.remove(GUIApp.get_data_file_path("data.pkl"))
+                # os.remove("data.pkl")
             except FileNotFoundError:
                 pass
 
             try:
-                os.remove("time_entry_id.pkl")
+                os.remove(GUIApp.get_data_file_path("time_entry_id.pkl"))
+                # os.remove("time_entry_id.pkl")
             except FileNotFoundError:
                 pass
 
@@ -2372,8 +2409,9 @@ class GUIApp:
         try:
             
             with self.play_timer_lock:
-                if os.path.isfile('trackingStart_list.pkl'):
-                    with open("trackingStart_list.pkl", "rb") as f:
+                # if os.path.isfile('trackingStart_list.pkl'):
+                if os.path.isfile(GUIApp.get_data_file_path("trackingStart_list.pkl")):
+                    with open(GUIApp.get_data_file_path("trackingStart_list.pkl"), "rb") as f:
                         self.trackingStart_list = pickle.load(f)
 
                         if len(self.trackingStart_list) > 0:
@@ -2408,25 +2446,25 @@ class GUIApp:
                                     # Reset index to 0
                                     index = 0
 
-                                    with open("trackingStart_list.pkl", "wb") as f:
+                                    with open(GUIApp.get_data_file_path("trackingStart_list.pkl"), "wb") as f:
                                         pickle.dump(self.trackingStart_list, f)
                                     # Checking if the pickle file exists
 
-                                    if os.path.isfile("time_entry_id.pkl"):
+                                    if os.path.isfile(GUIApp.get_data_file_path("time_entry_id.pkl")):
                                         # Loading the previous time entry ID from the pickle file
-                                        with open("time_entry_id.pkl", "rb") as f:
+                                        with open(GUIApp.get_data_file_path("time_entry_id.pkl"), "rb") as f:
                                             previousTimeEntryId = pickle.load(
                                                 f)
 
                                             # Checking if the previous time entry ID matches the current one
                                         if previousTimeEntryId == uniqueId:
                                             # Writing the current time entry ID to the pickle file
-                                            with open("time_entry_id.pkl", "wb") as f:
+                                            with open(GUIApp.get_data_file_path("time_entry_id.pkl"), "wb") as f:
                                                 pickle.dump(timeentryid, f)
 
                                     # ======== read screenshots data and replace id =========== #
-                                    if os.path.isfile("screenshots_data.pkl"):
-                                        with open("screenshots_data.pkl", "rb") as f:
+                                    if os.path.isfile(GUIApp.get_data_file_path("screenshots_data.pkl")):
+                                        with open(GUIApp.get_data_file_path("screenshots_data.pkl"), "rb") as f:
                                             screenshotsData = pickle.load(f)
 
                                         # Check if screenshotsData contains any data
@@ -2440,12 +2478,13 @@ class GUIApp:
                                                     entry['timeEntryId'] = timeentryid
 
                                             # Save the modified data back to the pickle file
-                                            with open("screenshots_data.pkl", "wb") as f:
+                                            with open(GUIApp.get_data_file_path("screenshots_data.pkl"), "wb") as f:
                                                 pickle.dump(screenshotsData, f)
 
                                     # ========= read stop Timer list data and replace id =========== #
-                                    if os.path.isfile("trackingStop_list.pkl"):
-                                        with open("trackingStop_list.pkl", "rb") as f:
+                                    # if os.path.isfile("trackingStop_list.pkl"):
+                                    if os.path.isfile(GUIApp.get_data_file_path("trackingStop_list.pkl")):
+                                        with open(GUIApp.get_data_file_path("trackingStop_list.pkl"), "rb") as f:
                                             trackerStopList = pickle.load(f)
 
                                         if trackerStopList:
@@ -2457,7 +2496,7 @@ class GUIApp:
                                                     # Replace timeEntry with timeEntryId
                                                     stop['timeEntryId'] = timeentryid
 
-                                            with open("trackingStop_list.pkl", "wb") as f:
+                                            with open(GUIApp.get_data_file_path("trackingStop_list.pkl"), "wb") as f:
                                                 pickle.dump(trackerStopList, f)
 
         except Exception as error:
@@ -2471,7 +2510,7 @@ class GUIApp:
             print("play button")
             # Change the icon to indicate the running state
             # self.root.iconphoto(True, self.official_icon)
-            self.root.wm_iconbitmap("images/animatedlogo.ico")
+            self.root.wm_iconbitmap(self.resource_path("images/animatedlogo.ico"))
             # self.set_icon("images/animatedlogo.ico")
             if self.updated:
                 confirmation = messagebox.askyesno(
@@ -2534,10 +2573,10 @@ class GUIApp:
 
                         # Check if the file exists before reading from it
                         # Check if the file exists
-                        if os.path.isfile("trackingStart_list.pkl"):
+                        if os.path.isfile(GUIApp.get_data_file_path("trackingStart_list.pkl")):
                             # Check if the file is empty
-                            if os.path.getsize("trackingStart_list.pkl") > 0:
-                                with open("trackingStart_list.pkl", "rb") as f:
+                            if os.path.getsize(GUIApp.get_data_file_path("trackingStart_list.pkl")) > 0:
+                                with open(GUIApp.get_data_file_path("trackingStart_list.pkl"), "rb") as f:
                                     # Load trackingStart_list from the file
                                     self.trackingStart_list = pickle.load(f)
                             else:
@@ -2564,11 +2603,11 @@ class GUIApp:
                             self.trackingStart_list.append(trackingstart)
 
                             # Save the updated list to the file
-                            with open("trackingStart_list.pkl", "wb") as f:
+                            with open(GUIApp.get_data_file_path("trackingStart_list.pkl"), "wb") as f:
                                 pickle.dump(self.trackingStart_list, f)
 
                             # Save the time entry ID to a separate file
-                            with open("time_entry_id.pkl", "wb") as f:
+                            with open(GUIApp.get_data_file_path("time_entry_id.pkl"), "wb") as f:
                                 pickle.dump(unique_id, f)
 
                             print("Tracking start data saved successfully.")
@@ -2589,25 +2628,26 @@ class GUIApp:
                                 self.popActive=True
                                 self.breakActive = False
                                 # Display a notification with an icon
-                                Notifier.notify(
-                                    title="SSTRACK started",
-                                    message="Your break has been stopped. SSTRACK is started.",
-                                    timeout=3,  # Notification disappears after 3 seconds
-                                    app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-                                )
-
+                                # Notifier.notify(
+                                #     title="SSTRACK started",
+                                #     message="Your break has been stopped. SSTRACK is started.",
+                                #     timeout=3,  # Notification disappears after 3 seconds
+                                #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
+                                # )
+                                os.system('terminal-notifier -title "SSTRACK started" -message "Your break has been stopped. SSTRACK is started." -appIcon "images/animatedlogo.png"')
                                 # Your break has been stopped. SSTRACK is started.
                             else:
                             # self.breakExecution()
                             # self.start_Timer()
      
                                 # Display a notification with an icon
-                                Notifier.notify(
-                                    title="SSTRACK started",
-                                    message=message,
-                                    timeout=3,  # Notification disappears after 3 seconds
-                                    app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-                                ) 
+                                # Notifier.notify(
+                                #     title="SSTRACK started",
+                                #     message=message,
+                                #     timeout=3,  # Notification disappears after 3 seconds
+                                #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
+                                # ) 
+                                os.system('terminal-notifier -title "SSTRACK started" -message "SSTRACK started" -appIcon "images/animatedlogo.png"')
                             # Start the timer in a separate thread
                             threading.Thread(target=self.setUpBreak).start()
 
@@ -2628,13 +2668,14 @@ class GUIApp:
             #                 fg="#7094B0",  # White text when break ends
             # )
                     
-            if os.path.isfile("breakData.pkl"):
-                with open("breakData.pkl", "rb") as f:
+            # if os.path.isfile("breakData.pkl"):
+            if os.path.isfile(GUIApp.get_data_file_path("breakData.pkl")):
+                with open(GUIApp.get_data_file_path("breakData.pkl"), "rb") as f:
                     self.breakData = pickle.load(f)
 
             # Load existing break data if the file exists
-            if os.path.isfile("breakUsed.pkl"):
-                with open("breakUsed.pkl", "rb") as f:
+            if os.path.isfile(GUIApp.get_data_file_path("breakUsed.pkl")):
+                with open(GUIApp.get_data_file_path("breakUsed.pkl"), "rb") as f:
                     self.breakUsed = pickle.load(f)
 
             self.playTime = datetime.datetime.now(pytz.UTC)
@@ -2650,12 +2691,12 @@ class GUIApp:
                             fg="#7094B0",  # White text when break ends
                         )
                 # Save the updated data to `breakData.pkl`
-                with open("breakData.pkl", "wb") as f:
+                with open(GUIApp.get_data_file_path("breakData.pkl"), "wb") as f:
                     pickle.dump(self.breakData, f)
 
                 # Remove `breakUsed.pkl` after processing
-                if os.path.isfile("breakUsed.pkl"):
-                    os.remove("breakUsed.pkl")
+                if os.path.isfile(GUIApp.get_data_file_path("breakUsed.pkl")):
+                    os.remove(GUIApp.get_data_file_path("breakUsed.pkl"))
             if self.is_timer_running:
                 self.start_Timer()
             self.breakExecution()
@@ -2682,8 +2723,8 @@ class GUIApp:
     def stop_Timer(self):
         try:
             with self.stop_timer_lock:
-                if os.path.isfile("trackingStop_list.pkl"):
-                    with open("trackingStop_list.pkl", "rb") as f:
+                if os.path.isfile(GUIApp.get_data_file_path("trackingStop_list.pkl")):
+                    with open(GUIApp.get_data_file_path("trackingStop_list.pkl"), "rb") as f:
                         self.trackingStop_list = pickle.load(f)
 
                 if self.trackingStop_list:
@@ -2707,7 +2748,7 @@ class GUIApp:
                             if self.trackingStop_list:
                                 del self.trackingStop_list[0]
                                 index = 0
-                                with open("trackingStop_list.pkl", "wb") as f:
+                                with open(GUIApp.get_data_file_path("trackingStop_list.pkl"), "wb") as f:
                                     pickle.dump(self.trackingStop_list, f)
                             # data = response.json()
                             print("Timer stopped:")
@@ -2720,7 +2761,7 @@ class GUIApp:
             return None
 
     def click_pause_button(self, event=None):
-        self.root.wm_iconbitmap("images/pauseico.ico")
+        self.root.wm_iconbitmap(self.resource_path("images/pauseico.ico"))
         try:
             with self.click_pause_button_lock:
                 if self.is_timer_running:
@@ -2734,7 +2775,7 @@ class GUIApp:
 
                 # Attempt to load time_entry_id.pkl
                 try:
-                    with open("time_entry_id.pkl", "rb") as f:
+                    with open(GUIApp.get_data_file_path("time_entry_id.pkl"), "rb") as f:
                         timeEntryId = pickle.load(f)
                 except (FileNotFoundError, EOFError):
                     print("Error: time_entry_id.pkl not found or is empty.")
@@ -2742,9 +2783,9 @@ class GUIApp:
 
                 # Initialize or load trackingStop_list.pkl
                 self.trackingStop_list = []
-                if os.path.isfile("trackingStop_list.pkl"):
+                if os.path.isfile(GUIApp.get_data_file_path("trackingStop_list.pkl")):
                     try:
-                        with open("trackingStop_list.pkl", "rb") as f:
+                        with open(GUIApp.get_data_file_path("trackingStop_list.pkl"), "rb") as f:
                             self.trackingStop_list = pickle.load(f)
                     except EOFError:
                         print("Error: trackingStop_list.pkl is empty. Initializing a new list.")
@@ -2756,7 +2797,7 @@ class GUIApp:
                 self.trackingStop_list.append(trackingstop)
 
                 # Save updated trackingStop_list.pkl
-                with open("trackingStop_list.pkl", "wb") as f:
+                with open(GUIApp.get_data_file_path("trackingStop_list.pkl"), "wb") as f:
                     pickle.dump(self.trackingStop_list, f)
 
                 # Update UI components
@@ -2777,13 +2818,13 @@ class GUIApp:
                         message = f"{project_name}\n{message}"
                                 
                     # Display a notification with an icon
-                    Notifier.notify(
-                        title="SSTRACK stopped",
-                        message=message,
-                        timeout=3,  # Notification disappears after 3 seconds
-                        app_icon="images/logopause.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-                    )
-
+                    # Notifier.notify(
+                    #     title="SSTRACK stopped",
+                    #     message=message,
+                    #     timeout=3,  # Notification disappears after 3 seconds
+                    #     app_icon="images/logopause.ico"  # Provide the path to your icon file (e.g., .ico or .png)
+                    # )
+                    os.system('terminal-notifier -title "SSTRACK started" -message "SSTRACK stopped" -appIcon "images/animatedlogo.png"')
                 # Break handling
                 self.total_intervals = 0
                 self.active_intervals = 0
@@ -2806,7 +2847,7 @@ class GUIApp:
 
     def restartTimer(self):
         try:
-            with open("time_entry_id.pkl", "rb") as f:
+            with open(GUIApp.get_data_file_path("time_entry_id.pkl"), "rb") as f:
                 timeEntryId = pickle.load(f)
 
             message = ""
@@ -2820,16 +2861,16 @@ class GUIApp:
 
 
             # Display a notification with an icon
-            Notifier.notify(
-                title="SSTRACK started",
-                message=message,
-                timeout=3,  # Notification disappears after 3 seconds
-                app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-            )
-
+            # Notifier.notify(
+            #     title="SSTRACK started",
+            #     message=message,
+            #     timeout=3,  # Notification disappears after 3 seconds
+            #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
+            # )
+            os.system('terminal-notifier -title "SSTRACK started" -message "SSTRACK started" -appIcon "images/animatedlogo.png"')
             self.trackingStop_list = []
-            if os.path.isfile("trackingStop_list.pkl"):
-                with open("trackingStop_list.pkl", "rb") as f:
+            if os.path.isfile(GUIApp.get_data_file_path("trackingStop_list.pkl")):
+                with open(GUIApp.get_data_file_path("trackingStop_list.pkl"), "rb") as f:
                     self.trackingStop_list = pickle.load(f)
 
             if self.sleep_mode:
@@ -2838,7 +2879,7 @@ class GUIApp:
                 current_time = datetime.datetime.now(pytz.UTC)
             trackingstop = {"endTime": current_time, "timeEntryId": timeEntryId}
             self.trackingStop_list.append(trackingstop)
-            with open("trackingStop_list.pkl", "wb") as f:
+            with open(GUIApp.get_data_file_path("trackingStop_list.pkl"), "wb") as f:
                 pickle.dump(self.trackingStop_list, f)
 
             ############## Timer Start
@@ -2858,11 +2899,11 @@ class GUIApp:
             self.trackingStart_list.append(trackingstart)
 
             # Save the updated list to the file
-            with open("trackingStart_list.pkl", "wb") as f:
+            with open(GUIApp.get_data_file_path("trackingStart_list.pkl"), "wb") as f:
                 pickle.dump(self.trackingStart_list, f)
 
             # Save the time entry ID to a separate file
-            with open("time_entry_id.pkl", "wb") as f:
+            with open(GUIApp.get_data_file_path("time_entry_id.pkl"), "wb") as f:
                 pickle.dump(unique_id, f)
 
             # Start the timer in a separate thread
@@ -2935,12 +2976,13 @@ class GUIApp:
             self.break_button_enabled = True
             print("Break button is disabled. Click ignored.")
               # Display a notification with an icon
-            Notifier.notify(
-                title="Break stopped",
-                message="Your break has stopped",
-                timeout=3,  # Notification disappears after 3 seconds
-                app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-            )
+            # Notifier.notify(
+            #     title="Break stopped",
+            #     message="Your break has stopped",
+            #     timeout=3,  # Notification disappears after 3 seconds
+            #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
+            # )
+            os.system('terminal-notifier -title "SSTRACK started" -message "Break stopped" -appIcon "images/animatedlogo.png"')
             # self.setUpBreak()
             threading.Thread(target=self.setUpBreak, daemon=True).start()
             return
@@ -2955,13 +2997,13 @@ class GUIApp:
 
                 # Display a notification with an icon
                 if self.can_display_notification():
-                    Notifier.notify(
-                        title="Break started",
-                        message="Your break has started",
-                        timeout=3,
-                        app_icon="images/animatedlogo.ico"
-                    )
-
+                    # Notifier.notify(
+                    #     title="Break started",
+                    #     message="Your break has started",
+                    #     timeout=3,
+                    #     app_icon="images/animatedlogo.ico"
+                    # )
+                    os.system('terminal-notifier -title "SSTRACK started" -message "break started" -appIcon "images/animatedlogo.png"')
                 self.breakId = str(uuid.uuid4())
 
                 # Start `startBreakTime` in a separate thread
@@ -2972,23 +3014,23 @@ class GUIApp:
         elif self.breakFound and self.parse_remaining_break_time(self.BreakTime) < 1:
             if self.can_display_notification():
                 # Display a notification with an icon
-                Notifier.notify(
-                    title="Break Time",
-                    message="The assigned break time has already been utilized",
-                    timeout=3,
-                    app_icon="images/animatedlogo.ico"
-                )
-
+                # Notifier.notify(
+                #     title="Break Time",
+                #     message="The assigned break time has already been utilized",
+                #     timeout=3,
+                #     app_icon="images/animatedlogo.ico"
+                # )
+                os.system('terminal-notifier -title "SSTRACK started" -message "BThe assigned break time has already been utilized" -appIcon "images/animatedlogo.png"')
         elif not self.breakFound:
             if self.can_display_notification():
                 # Display a notification with an icon
-                Notifier.notify(
-                    title="Break Time",
-                    message="No break time has been assigned by the company.",
-                    timeout=3,
-                    app_icon="images/animatedlogo.ico"
-                )
-
+                # Notifier.notify(
+                #     title="Break Time",
+                #     message="No break time has been assigned by the company.",
+                #     timeout=3,
+                #     app_icon="images/animatedlogo.ico"
+                # )
+                os.system('terminal-notifier -title "SSTRACK started" -message "No break time has been assigned by the company." -appIcon "images/animatedlogo.png"')
 
     def on_closing(self):
         try:
@@ -3027,7 +3069,7 @@ class GUIApp:
             pass
 
         try:
-            os.remove("time_entry_id.pkl")
+            os.remove(GUIApp.get_data_file_path("time_entry_id.pkl"))
         except FileNotFoundError:
             pass
 
@@ -3086,13 +3128,13 @@ class GUIApp:
                                 if self.parse_remaining_break_time(self.BreakTime) > 1:
                                     print("It's break time!")
                                     # Display a notification with an icon
-                                    Notifier.notify(
-                                        title="Break started",
-                                        message="your break has started",
-                                        timeout=3,  # Notification disappears after 3 seconds
-                                        app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-                                    )
-
+                                    # Notifier.notify(
+                                    #     title="Break started",
+                                    #     message="your break has started",
+                                    #     timeout=3,  # Notification disappears after 3 seconds
+                                    #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
+                                    # )
+                                    os.system('terminal-notifier -title "SSTRACK started" -message "Break Started" -appIcon "images/animatedlogo.png"')
                                     self.breakStartedOn =self.exact_time
                                     self.breakActive=True
                                     self.breakId = str(uuid.uuid4())
@@ -3392,12 +3434,13 @@ class GUIApp:
                 try:
                     shutil.copy(shortcut_source, destination)
                     print("SSTRACK has been added to startup.")
-                    Notifier.notify(
-                        title="SSTRACK",
-                        message="Settings updated.",
-                        timeout=3,  # Notification disappears after 3 seconds
-                        app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-                                )
+                    # Notifier.notify(
+                    #     title="SSTRACK",
+                    #     message="Settings updated.",
+                    #     timeout=3,  # Notification disappears after 3 seconds
+                    #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
+                    #             )
+                    os.system('terminal-notifier -title "SSTRACK started" -message "SStrack" -appIcon "images/animatedlogo.png"')
                 except Exception as e:
                     print(f"Failed to add SSTRACK to startup: {e}")
             else:
@@ -3417,12 +3460,13 @@ class GUIApp:
                 try:
                     os.remove(shortcut_path)
                     print("SSTRACK has been removed from startup.")
-                    Notifier.notify(
-                        title="SSTRACK",
-                        message="Settings updated.",
-                        timeout=3,  # Notification disappears after 3 seconds
-                        app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-                                )
+                    # Notifier.notify(
+                    #     title="SSTRACK",
+                    #     message="Settings updated.",
+                    #     timeout=3,  # Notification disappears after 3 seconds
+                    #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
+                    #             )
+                    os.system('terminal-notifier -title "SSTRACK started" -message "SStrack" -appIcon "images/animatedlogo.png"')
                 except Exception as e:
                     print(f"Failed to remove SSTRACK from startup: {e}")
             else:
@@ -3454,12 +3498,13 @@ class GUIApp:
                 # Logic for auto-start off
                 print("Auto-start disabled")
                 os.remove("autoLaunch.pkl")
-            Notifier.notify(
-                title="SSTRACK",
-                message="Settings updated.",
-                timeout=3,  # Notification disappears after 3 seconds
-                app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-                )
+            # Notifier.notify(
+            #     title="SSTRACK",
+            #     message="Settings updated.",
+            #     timeout=3,  # Notification disappears after 3 seconds
+            #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
+            #     )
+            os.system('terminal-notifier -title "SSTRACK started" -message "SStrack" -appIcon "images/animatedlogo.png"')
             
         except Exception as e:
             print(f"Failed to change: {e}")
@@ -3575,9 +3620,9 @@ class GUIApp:
                             # self.click_pause_button()
                             threading.Thread(target=self.click_pause_button, daemon=True).start()
                         # Load or initialize breakUsed.pkl
-                        if os.path.isfile("breakUsed.pkl"):
+                        if os.path.isfile(GUIApp.get_data_file_path("breakUsed.pkl")):
                             try:
-                                with open("breakUsed.pkl", "rb") as f:
+                                with open(GUIApp.get_data_file_path("breakUsed.pkl"), "rb") as f:
                                     self.breakUsed = pickle.load(f)
                             except EOFError:
                                 print("Error: breakUsed.pkl is empty. Initializing a new dictionary.")
@@ -3595,7 +3640,7 @@ class GUIApp:
                         }
 
                         # Save the updated breakUsed.pkl
-                        with open("breakUsed.pkl", "wb") as f:
+                        with open(GUIApp.get_data_file_path("breakUsed.pkl"), "wb") as f:
                             pickle.dump(self.breakUsed, f)
 
                         # update break timer 
@@ -3606,19 +3651,19 @@ class GUIApp:
                             self.breakCount = 0
                             self.breakId = str(uuid.uuid4())
                             self.breakStartedOn = datetime.datetime.now(pytz.UTC)
-                            if os.path.isfile("breakData.pkl"):
-                                with open("breakData.pkl", "rb") as f:
+                            if os.path.isfile(GUIApp.get_data_file_path("breakData.pkl")):
+                                with open(GUIApp.get_data_file_path("breakData.pkl"), "rb") as f:
                                     self.breakData = pickle.load(f)
                             if self.breakUsed:
                                 self.breakData.append(self.breakUsed)
 
                                 # Save the updated data to `breakData.pkl`
-                                with open("breakData.pkl", "wb") as f:
+                                with open(GUIApp.get_data_file_path("breakData.pkl"), "wb") as f:
                                     pickle.dump(self.breakData, f)
 
                                 # Remove `breakUsed.pkl` after processing
-                                if os.path.isfile("breakUsed.pkl"):
-                                    os.remove("breakUsed.pkl")
+                                if os.path.isfile(GUIApp.get_data_file_path("breakUsed.pkl")):
+                                    os.remove(GUIApp.get_data_file_path("breakUsed.pkl"))
                                 
                                 self.breakExecution()
 
@@ -3661,12 +3706,13 @@ class GUIApp:
 
                         print("break time off")
                          # Display a notification with an icon
-                        Notifier.notify(
-                            title="Break ended",
-                            message="Your break has ended",
-                            timeout=3,  # Notification disappears after 3 seconds
-                            app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-                        )
+                        # Notifier.notify(
+                        #     title="Break ended",
+                        #     message="Your break has ended",
+                        #     timeout=3,  # Notification disappears after 3 seconds
+                        #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
+                        # )
+                        os.system('terminal-notifier -title "SSTRACK started" -message "Break Ended" -appIcon "images/animatedlogo.png"')
 
                         # self.canvas.itemconfig(self.break_Button, image=self.break_icon)
                         # Load or initialize breakUsed.pkl
@@ -3687,8 +3733,8 @@ class GUIApp:
             print("hello break exe")
             with self.breakExecution_lock:
                 # Ensure that breakData.pkl exists and load it correctly
-                if os.path.isfile("breakData.pkl"):
-                    with open("breakData.pkl", "rb") as f:
+                if os.path.isfile(GUIApp.get_data_file_path("breakData.pkl")):
+                    with open(GUIApp.get_data_file_path("breakData.pkl"), "rb") as f:
                         self.breakData_list = pickle.load(f)
 
                 if self.breakData_list:
@@ -3715,7 +3761,7 @@ class GUIApp:
                                 print("Timer stopped:")
                                 # Remove the processed data from the list and update the file
                                 del self.breakData_list[0]
-                                with open("breakData.pkl", "wb") as f:
+                                with open(GUIApp.get_data_file_path("breakData.pkl"), "wb") as f:
                                     pickle.dump(self.breakData_list, f)
                                 index = 0  # Reset the index if we modified the list
                                 self.getRemainingBreakTime()
