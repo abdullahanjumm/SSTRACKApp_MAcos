@@ -1,241 +1,194 @@
+import objc
+from Cocoa import (
+    NSApplication, NSWindow, NSButton, NSTextField, NSSecureTextField,
+    NSColor, NSFont, NSRunningApplication, NSApplicationActivateIgnoringOtherApps,
+    NSMakeRect, NSImageView, NSImage
+)
+from Foundation import NSObject
+from AppKit import NSAlert
 import requests
-from tkinter import *
-from tkinter import messagebox
-from PIL import Image, ImageTk
 import pickle
-import webbrowser
 import os
 import sys
-from customized import GUIApp
-import tempfile
+import subprocess
+import webbrowser
+from pathlib import Path
 
 
-class LoginApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("LOGIN")
-        self.root.geometry("700x500")
-        self.root.configure(bg="#0E4772")
-        self.root.resizable(False, False)
+class LoginApp(NSObject):
+    def applicationDidFinishLaunching_(self, notification):
+        self.show_password = False  # Track if password is shown or hidden
+
+        # Window setup
+        self.window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+            NSMakeRect(100.0, 100.0, 700.0, 400.0),
+            15,
+            2,
+            False
+        )
+        self.window.setTitle_("LOGIN")
+        self.window.setBackgroundColor_(
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0)
+        )
+        self.window.makeKeyAndOrderFront_(None)
 
         # Center the window
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        x_coordinate = int((screen_width / 2) - (700 / 2))
-        y_coordinate = int((screen_height / 2) - (500 / 2))
-        self.root.geometry(f"700x500+{x_coordinate}+{y_coordinate}")
+        screen = self.window.screen().frame()
+        win_frame = self.window.frame()
+        center_x = (screen.size.width - win_frame.size.width) / 2
+        center_y = (screen.size.height - win_frame.size.height) / 2
+        self.window.setFrameOrigin_((center_x, center_y))
 
-        if getattr(sys, 'frozen', False):
-            base_path = sys._MEIPASS
+        content_view = self.window.contentView()
+
+        # App Logo
+        logo_path = self.resource_path("images/sstracklogo.png")
+        if os.path.exists(logo_path):
+            logo_image = NSImage.alloc().initByReferencingFile_(logo_path)
+            self.logo_view = NSImageView.alloc().initWithFrame_(NSMakeRect(300, 310, 100, 50))
+            self.logo_view.setImage_(logo_image)
+            self.logo_view.setImageScaling_(2)
+            content_view.addSubview_(self.logo_view)
+
+        # Heading Text
+        self.heading = NSTextField.alloc().initWithFrame_(NSMakeRect(250, 280, 200, 30))
+        self.heading.setStringValue_("Login to SStrack")
+        self.heading.setBezeled_(False)
+        self.heading.setDrawsBackground_(False)
+        self.heading.setEditable_(False)
+        self.heading.setSelectable_(False)
+        self.heading.setAlignment_(1)
+        self.heading.setFont_(NSFont.boldSystemFontOfSize_(18))
+        self.heading.setTextColor_(NSColor.whiteColor())
+        content_view.addSubview_(self.heading)
+
+        # Email field
+        self.email_field = NSTextField.alloc().initWithFrame_(NSMakeRect(200, 230, 300, 24))
+        self.email_field.setPlaceholderString_("Enter your email")
+        self.email_field.setFont_(NSFont.systemFontOfSize_(14))
+        content_view.addSubview_(self.email_field)
+
+        # Password field (secure by default)
+        self.password_field = NSSecureTextField.alloc().initWithFrame_(NSMakeRect(200, 185, 300, 24))
+        self.password_field.setPlaceholderString_("Enter your password")
+        self.password_field.setFont_(NSFont.systemFontOfSize_(14))
+        content_view.addSubview_(self.password_field)
+
+        # Show Password Eye Icon Button
+        self.toggle_password_button = NSButton.alloc().initWithFrame_(NSMakeRect(470, 165, 30, 24))
+        self.toggle_password_button.setTitle_("👁️")  # Start with eye open
+        self.toggle_password_button.setBezelStyle_(1)
+        self.toggle_password_button.setBordered_(False)
+        self.toggle_password_button.setTarget_(self)
+        self.toggle_password_button.setAction_(objc.selector(self.togglePasswordVisibility_, signature=b'v@:'))
+        content_view.addSubview_(self.toggle_password_button)
+
+        # Login button
+        self.login_button = NSButton.alloc().initWithFrame_(NSMakeRect(200, 135, 300, 32))
+        self.login_button.setTitle_("Login")
+        self.login_button.setBezelStyle_(1)
+        self.login_button.setTarget_(self)
+        self.login_button.setAction_(objc.selector(self.performLogin_, signature=b'v@:'))
+        content_view.addSubview_(self.login_button)
+
+        # Forget password button
+        self.forget_button = NSButton.alloc().initWithFrame_(NSMakeRect(350, 95, 150, 20))
+        self.forget_button.setTitle_("Forget Password")
+        self.forget_button.setBordered_(False)
+        self.forget_button.setTarget_(self)
+        self.forget_button.setAction_(objc.selector(self.openForgetPassword_, signature=b'v@:'))
+        content_view.addSubview_(self.forget_button)
+
+
+    def togglePasswordVisibility_(self, sender):
+        """Toggles between showing and hiding the password."""
+        content_view = self.window.contentView()
+        old_password = str(self.password_field.stringValue())
+        frame = self.password_field.frame()
+    
+        # Remove current password field
+        self.password_field.removeFromSuperview()
+    
+        if self.show_password:
+            # Switch back to Secure Text Field (hidden password)
+            self.password_field = NSSecureTextField.alloc().initWithFrame_(frame)
+            self.toggle_password_button.setTitle_("👁️")  # Eye Open
         else:
-            base_path = os.path.abspath(".")
-        # Load icons
-        # self.play_icon = PhotoImage(file='images/sstracklogo.png')
-        self.play_icon = PhotoImage(file=os.path.join(base_path, 'images', 'sstracklogo.png'))
-        # self.email_icon = PhotoImage(file='images/email.png')
-        self.email_icon = PhotoImage(file=os.path.join(base_path, 'images', 'email.png'))
-        # self.password_icon = PhotoImage(file='images/password.png')
-        self.password_icon = PhotoImage(file=os.path.join(base_path, 'images', 'password.png'))
-        # official_icon = self.resize_image('images/logopause.ico', 100, 100)
-        official_icon = self.resize_image(LoginApp.resource_path('images/logopause.ico'), 100, 100)
-
-        self.root.iconphoto(True, official_icon)
-
-        # Logo Frame
-        frame1 = Frame(self.root, width=350, height=50, bg="#0E4772")
-        frame1.place(x=20, y=15)
-        play_label = Label(frame1, image=self.play_icon, bg="#0E4772")
-        play_label.place(x=0, y=-4)
-
-        # Main Frame for login
-        frame = Frame(self.root, width=350, height=450, bg="#0E4772")
-        frame.place(x=172, y=70)
-
-        # Heading
-        heading = Label(frame, text="Access your Account", fg="#FFFFFF", bg="#0E4772", font=('Arial', 20, 'bold'))
-        heading.place(x=50, y=20)
-
-        # Email Entry
-        email_label = Label(frame, image=self.email_icon, bg="#0E4772")
-        email_label.place(x=20, y=70)
-        self.email = Entry(frame, width=25, fg="#FFFFFF", border=0, bg="#0E4772", font=('Arial', 12), highlightthickness=0)
-        self.email.insert(0, 'Enter your email')
-        self.email.bind("<FocusIn>", self.clear_placeholder)
-        self.email.bind("<FocusOut>", self.add_placeholder)
-        self.email.place(x=55, y=75)
-        Frame(frame, width=295, height=2, bg='#FFFFFF').place(x=20, y=100)
-
-        # Password Entry
-        password_label = Label(frame, image=self.password_icon, bg="#0E4772")
-        password_label.place(x=20, y=120)
-        self.Password = Entry(frame, width=25, fg="#FFFFFF", border=0, bg="#0E4772", font=('Arial', 12), show="*", highlightthickness=0)
-        self.Password.insert(0, 'Enter your password')
-        self.Password.bind("<FocusIn>", self.clear_placeholder_password)
-        self.Password.bind("<FocusOut>", self.add_placeholder_password)
-        self.Password.place(x=55, y=125)
-        Frame(frame, width=295, height=2, bg='#FFFFFF').place(x=20, y=150)
-
-        # Check for data in pickle file
-        self.check_and_load_data()
-
-
-        # Forget Password Label acting as a button
-        forgetpassword = Label(frame, text="Forget Password", fg="#7ACB59", bg="#0E4772", cursor="hand2",
-                       font=('Arial', 10, 'bold'))
-        forgetpassword.place(x=190, y=170)
-        forgetpassword.bind("<Button-1>", lambda e: self.open_forget_password())
-        
-        # Login Label acting as a button
-        login_button = Label(frame, text="Login", fg="#FFFFFF", bg="#3CB371", cursor="hand2",
-                     font=('Arial', 12, 'bold'), width=36, pady=7)
-        login_button.place(x=20, y=210)
-        login_button.bind("<Button-1>", lambda e: self.perform_login())
-
-        # Google Sign-Up Button
-        google_signup = Label(frame, text="Sign up with Google", fg="#FFFFFF", bg="#DB4437", cursor="hand2",
-                     font=('Arial', 12, 'bold'), width=36, pady=7)
-        google_signup.place(x=20, y=260)
-        google_signup.bind("<Button-1>", lambda e: self.signup_with_google())
-        
-        # Microsoft Sign-Up Button
-        microsoft_signup = Label(frame, text="Sign up with Microsoft", fg="#FFFFFF", bg="#0078D4", cursor="hand2",
-                     font=('Arial', 12, 'bold'), width=36, pady=7)
-                                
-        microsoft_signup.place(x=20, y=310)
-        microsoft_signup.bind("<Button-1>", lambda e: self.signup_with_microsoft())
-
-        # Sign Up Label
-        label = Label(frame, text="Don't have an account?", fg="#FFFFFF", bg="#0E4772", font=('Arial', 10))
-        label.place(x=70, y=360)
-
-        # Traditional Sign Up Button
-        signup = Label(frame, text="Sign up", fg="#7ACB59", bg="#0E4772", cursor="hand2",
-                        font=('Arial', 10, 'bold'))
-        signup.place(x=180, y=360)
-
-        # Bind Enter key to login function
-        self.root.bind("<Return>", self.perform_login)
+            # Switch to Plain Text Field (visible password)
+            self.password_field = NSTextField.alloc().initWithFrame_(frame)
+            self.toggle_password_button.setTitle_("🙈")  # Eye Closed
+    
+        self.password_field.setStringValue_(old_password)
+        self.password_field.setFont_(NSFont.systemFontOfSize_(14))
+        content_view.addSubview_(self.password_field)
+    
+        self.show_password = not self.show_password
     
     
-    @staticmethod
-    def get_app_dir():
-        """Get the directory where the executable is running."""
-        if getattr(sys, 'frozen', False):
-            return os.path.dirname(sys.executable)  # Running as an executable
-        return os.path.dirname(os.path.abspath(__file__))  # Running as a script
-    def resource_path(relative_path):
-        """ Get absolute path to resource, works for development and PyInstaller """
-        if getattr(sys, 'frozen', False):
-            base_path = sys._MEIPASS  # PyInstaller bundle path
-        else:
-            base_path = os.path.abspath(".")  # Normal script path
-
-        path = os.path.join(base_path, relative_path)
-
-        # Debugging: Print the path to check if it exists
-        print(f"Loading file: {path}")
-
-        if not os.path.exists(path):
-            print(f"Error: {path} not found!")
-
+    
+    def get_user_data_dir(self):
+        path = os.path.join(Path.home(), "Library", "Application Support", "SStrack")
+        os.makedirs(path, exist_ok=True)
         return path
 
-    def resize_image(self, file_path, width, height):
-        image = Image.open(file_path)
-        image = image.resize((width, height), Image.LANCZOS)
-        return ImageTk.PhotoImage(image)
-
-    def signup_with_google(self):
-        url = "https://myuniversallanguages.com:9093/api/v1/auth/google"
-        webbrowser.open(url, new=2)
-
-    def signup_with_microsoft(self):
-        url = "https://myuniversallanguages.com:9093/api/v1/auth/microsoft"
-        webbrowser.open(url, new=2)
-
-    def clear_placeholder(self, event):
-        if self.email.get() == 'Enter your email':
-            self.email.delete(0, 'end')
-            self.email.config(fg="#FFFFFF")
-
-    def add_placeholder(self, event):
-        if self.email.get() == '':
-            self.email.insert(0, 'Enter your email')
-            self.email.config(fg="#CCCCCC")
-
-    def clear_placeholder_password(self, event):
-        if self.Password.get() == 'Enter your password':
-            self.Password.delete(0, 'end')
-            self.Password.config(fg="#FFFFFF", show="*")
-
-    def add_placeholder_password(self, event):
-        if self.Password.get() == '':
-            self.Password.config(fg="#CCCCCC", show="")
-            self.Password.insert(0, 'Enter your password')
-
-    def check_and_load_data(self):
-        data_path = os.path.join(LoginApp.get_app_dir(), "new_data.pkl")
-        if os.path.exists(data_path):
-            try:
-                with open(data_path, "rb") as file:
-                    data = pickle.load(file)
-                    print(f"Email: {data.get('email', 'No email found')}")
-                    print(f"Password: {data.get('password', 'No password found')}")
-            except Exception as e:
-                print(f"Error loading data: {e}")
-
-    def open_forget_password(self):
-        messagebox.showinfo("Forgot Password", "Forgot password functionality is under construction.")
-
-    def open_signup(self):
-        messagebox.showinfo("Sign Up", "Sign up functionality is under construction.")
-
-
-    def perform_login(self, event=None):
-     email_value = self.email.get()
-     password = self.Password.get()
-
-     api_url = "https://myuniversallanguages.com:9093/api/v1/signin"
-     model = {
-        "email": email_value,
-        "password": password
-     }
-
-     headers = {
-        "Content-Type": "application/json",
-     }
-
-     try:
-        response = requests.post(api_url, json=model, headers=headers)
-        data = response.json()
-        if "message" in data:
-            # If there's an error message returned from the API
-            messagebox.showerror("Error", data["message"])
+    def resource_path(self, relative_path):
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
         else:
-            # Login successful
-            data_file = os.path.join(LoginApp.get_app_dir(), "data.pkl")
-            new_data_file = os.path.join(LoginApp.get_app_dir(), "new_data.pkl")
-            token = data["token"]
-            with open(data_file, "wb") as f:
-                pickle.dump(token, f)
-                # Save email and password to new_data.pkl
-            login_data = {"email": email_value, "password": password}
-            with open(new_data_file, "wb") as f:
-                pickle.dump(login_data, f)
-            self.root.destroy()
-            second_page = GUIApp(Tk())
-            second_page.root.mainloop()
+            base_path = os.path.abspath(".")
+        return os.path.join(base_path, relative_path)
 
-     except requests.exceptions.RequestException as e:
-        # Handle connection or request error
-        messagebox.showerror("Error", "An error occurred while connecting to the server")
+    def openForgetPassword_(self, sender):
+        webbrowser.open("https://www.sstrack.io/forget-password", new=2)
+
+    def performLogin_(self, sender):
+        email = str(self.email_field.stringValue())
+        password = str(self.password_field.stringValue())
+        api_url = "https://myuniversallanguages.com:9093/api/v1/signin"
+        model = {"email": email, "password": password}
+        headers = {"Content-Type": "application/json"}
+
+        try:
+            response = requests.post(api_url, json=model, headers=headers)
+            data = response.json()
+
+            if "message" in data:
+                self._show_error(data["message"])
+            else:
+                # Save token and credentials
+                data_dir = self.get_user_data_dir()
+                with open(os.path.join(data_dir, "data.pkl"), "wb") as f:
+                    pickle.dump(data["token"], f)
+                with open(os.path.join(data_dir, "new_data.pkl"), "wb") as f:
+                    pickle.dump({"email": email, "password": password}, f)
+
+                print("✅ Login successful! Opening Home screen...")
+
+                # Close Login Window
+                self.window.close()
+
+                # Launch customized.py (Home Window)
+                python_executable = sys.executable
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                customized_script_path = os.path.join(script_dir, "customized.py")
+                subprocess.Popen([python_executable, customized_script_path])
+
+                NSApplication.sharedApplication().terminate_(self)
+
+        except requests.exceptions.RequestException:
+            self._show_error("An error occurred while connecting to the server")
+
+    def _show_error(self, message):
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_("Error")
+        alert.setInformativeText_(message)
+        alert.runModal()
 
 
-# Create the Tkinter window
-def main():
-    root = Tk()
-    app = LoginApp(root)
-    root.mainloop()
-
-if __name__ == "__main__":
-    main()
+# Entry point
+if __name__ == '__main__':
+    app = NSApplication.sharedApplication()
+    delegate = LoginApp.alloc().init()
+    app.setDelegate_(delegate)
+    NSRunningApplication.currentApplication().activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
+    app.run()

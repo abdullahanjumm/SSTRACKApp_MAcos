@@ -3,7 +3,18 @@ from tkinter import Toplevel
 from tkinter import messagebox
 import datetime
 from PIL import Image, ImageTk, ImageGrab, ImageDraw, ImageFont
-
+import objc
+from Cocoa import (
+    NSApplication, NSWindow, NSView, NSImageView, NSImage,
+    NSButton, NSTextField, NSColor, NSFont,
+    NSRunningApplication, NSApplicationActivateIgnoringOtherApps,
+    NSMakeRect, NSTitledWindowMask, NSClosableWindowMask,
+    NSResizableWindowMask, NSBackingStoreBuffered,
+)
+# ✅ CORRECT
+from AppKit import NSMutableAttributedString, NSForegroundColorAttributeName, NSPopUpButton, NSButtonCell, NSBezierPath, NSAttributedString, NSDictionary, NSForegroundColorAttributeName
+from Quartz import CAShapeLayer, CGPathCreateMutable, CGPathAddRoundedRect, CGRectMake
+from Foundation import NSObject
 import pickle
 import base64
 import json
@@ -36,55 +47,41 @@ from ActivityMonitor import ActivityMonitor
 from pystray import Icon, Menu, MenuItem
 import shutil
 from plyer import notification
-# from pync import Notifier
+from Quartz import CAShapeLayer, CGPathCreateMutable, CGPathAddRoundedRect, CGRectMake
+from AppKit import NSImage, NSSize
 from tkinter import font
 # Import platform-specific libraries
 if platform.system() == "Windows":
     import pygetwindow as gw
 elif platform.system() == "Linux":
     import ewmh
-
-
-class GUIApp:
-    def __init__(self, root):
-        # Initialize application variables and UI components
-        # Initialize application variables and UI components
-        self.sio = socketio.Client()
-        self.token = None  # Initialize token as None
-        self.sio = socketio.Client()
-        print("hello customize")
-        self.overall_timer = None
+from pathlib import Path
+from Cocoa import NSWindow, NSView, NSImageView, NSImage, NSTextField, NSButton
+from Cocoa import NSColor, NSFont, NSMakeRect
+class GUIApp(NSObject):
+    def applicationDidFinishLaunching_(self, notification):
+            # Initialize tracking-related variables
         self.is_timer_running = False
         self.screenshot_count = 0
-        self.root = root
-        self.root.title("HOME")
-        self.root.geometry("700x340")
-        self.root.configure(bg="#FFFFFF")
-        self.root.resizable(False, False)
-        # Set application icon
-        # Resize the image and get both the PhotoImage and PIL Image objects
-        # self.official_icon, self.icon_for_tray = self.resize_image('images/logo.png', 100, 100, 10)
-        # self.icon_for_tray = self.resize_image2("images/logoTray.png", 50, 50, 5)
-        self.icon_for_tray = self.resize_image2(self.resource_path("images/logoTray.png"), 50, 50, 5)
-        self.icon = self.icon_for_tray
-
-        # self.official_icon, _ = self.resize_image("images/logo.png", 100, 100, 10)
-        self.official_icon, _ = self.resize_image(self.resource_path("images/logo.png"), 100, 100, 10)
-        self.root.iconphoto(True, self.official_icon)
-        self.forgotTimer = False
-        self.projectId = None  # Variable to store selected project ID
-        self.projectIdNew = None
-        self.projectName = None
-        self.selected_project_name = None
-        # Load user token from a stored file
+        self.total = 0
+        self.exact_time = None
+        self.playTime = None
+        self.break_button_enabled = True
+        self.breakActive = False
+        self.popActive = False
+        self.calledImmediate = False
+        self.total_intervals = 0
+        self.active_intervals = 0
+        self.trackingStart_list = []
+        self.sio = socketio.Client()
+        self.token = None
+        self.employeeSetting_lock = threading.Lock()
+        self.fetch_data_lock = threading.Lock()
         self.user_Data()
-        # with open("data.pkl", "rb") as f:
-        #     stored_data = pickle.load(f)
-        #     self.token = stored_data
         self.last_time = time.time()
-
+        self.description = None
         self.activity_flag = False
-        
+        self.sleep_mode = False
         self.active_intervals = 0
         self.total_intervals = 0
         self.activityinterval = 12
@@ -95,23 +92,20 @@ class GUIApp:
         self.ssperhr = 30
         self.updated = False
         self.download = False
-        self.current_v = "1.1.19"
+        self.current_v = "1.1.25"
         self.dailytime = "0h 0m"
         self.hours = "00"
         self.minutes = "00"
         self.BreakTime='0h 0m'
-        # self.check_for_update()
         self.check_for_update_lock = threading.Lock()  # Initialize the lock
-
         self.percentage = 0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
-        # Initialize the overall report timer (but don't start it yet)
-        self.overall_report = ""  # Initialize an empty string to store the report
+        self.overall_report = ""  
         self.weeklyTimeLimit = "No limit"
         self.allowAddingOfflineTime = 0
-
         self.trackingStart_list = []
         self.trackingStop_list=[]
         self.breakData = []
+        self.breakData_list = [] 
         self.calledImmediate = False
         self.autoLaunch = False
         self.launch_monitor = False
@@ -121,481 +115,696 @@ class GUIApp:
         self.breakConvertedData = []
         self.popActive=False
         self.breakFound = False
-        self.last_notification_time = 0  # Timestamp of the last notification
-        self.notification_timeout = 3  # Notification display timeout in seconds
-        # threading.Thread(target=self.get_data).start()
-        
-        # Create and configure UI elements
-        frame0 = Frame(self.root, width=700, height=80, bg="#0E4772")
-        frame0.place(x=0, y=0)
-
-        # self.logo_icon = ImageTk.PhotoImage(file='images/sstracklogo.png')
-        self.logo_icon = ImageTk.PhotoImage(file=self.resource_path("images/sstracklogo.png"))
-        logo_label = Label(frame0, image=self.logo_icon, bg="#0E4772")
-        logo_label.place(x=20, y=10)
-
-        # Load setting icon with margin using the new method
-        # self.setting_icon = self.load_icon_with_margin('images/Settings_Icon.png', 20, 20, margin=10)
-        self.setting_icon = self.load_icon_with_margin(self.resource_path("images/Settings_Icon.png"), 20, 20, margin=10)
-        self.setting_label = tk.Label(
-            frame0, image=self.setting_icon, bg="#0E4772", cursor='hand2')
-        self.setting_label.place(x=600, y=18)
-        self.setting_label.bind("<Button-1>", lambda e: self.open_settings())
-
-        # Load logout icon with margin using the new method
-        # self.logout_icon = self.load_icon_with_margin('images/log_out_white.png', 20, 20, margin=10)
-        self.logout_icon = self.load_icon_with_margin(self.resource_path('images/log_out_white.png'), 20, 20, margin=10)
-        self.logout_button = tk.Label(
-            frame0, image=self.logout_icon, bg="#0E4772", cursor='hand2')
-        self.logout_button.place(x=633, y=18)
-        self.logout_button.bind("<Button-1>", lambda e: self.logout())
-
-        # self.logout_icon, _ = self.resize_image(
-        #     'images/logout.png', 30, 30, 10)
-        # self.logout_button = tk.Button(
-        #     frame0, image=self.logout_icon, bg="#0E4772", border=0, command=self.logout, cursor='hand2')
-        # self.logout_button.place(x=600, y=15)
-
-        # logout = Label(frame0, text="Logout", fg="#ffffff",
-        #                bg="#0E4772", font=('Roboto', 14,), cursor='hand2')
-        # logout.place(x=540, y=25)
-        # logout.bind("<Button-1>", self.logout)
-
-        frame2 = Frame(self.root, width=700, height=150, border=1, bg="#FFFFFF")
-        frame2.place(x=50, y=100)
-
-        self.username = Label(
-            frame2,
-            text=self.name,
-            fg="#0E4772",
-            bg="#FFFFFF",
-            font=("Roboto", 24, "bold"),
-        )
-        self.username.place(x=203, y=8)
-
-        # self.verified_icon, _ = self.resize_image("images/verified.png", 35, 35, 10)
-        self.verified_icon, _ = self.resize_image(self.resource_path("images/verified.png"), 35, 35, 10)
-        self.verified_label = tk.Label(
-            frame2, image=self.verified_icon, bg="#ffffff", border=0)
-        self.verified_label.place(x=150, y=0)
-
-        # Example usage
-        font_file = os.path.join(os.path.dirname(__file__), "font", "Technology.ttf") # Path to your .ttf file
-
-
-        companies = [self.company]
-        selected_company = tk.StringVar()
-        newselected_company = tk.StringVar()
-        selected_company.set(companies[0])  # Set the initial company to display\
-        newselected_company = selected_company.get()
-        if len(newselected_company) > 11:
-            newselected_company = (
-                newselected_company[:8] + "..."
-            )  # Truncate and add ellipsis
-
-        max_option_width = 12
-
-        # Create a label to display the selected company
-        company_label = tk.Label(
-            frame2,
-            text=newselected_company,
-            fg="#FFFFFF",
-            bg="#0E4772",
-            font=("Roboto", 14),
-            width=max_option_width,
-            height=1,  # Keep height at 1 line
-            pady=1.5,   # Add vertical padding
-        )
-        company_label.place(x=500, y=8)
-
-        self.frame = Frame(root, width=700, height=150, border=1, bg="#FFFFFF")
-        self.frame.place(x=60, y=160)
-
-        self.description = None
-        self.descriptions = Entry(
-            self.frame,
-            width=350,
-            borderwidth=1,        # Add minimal border
-            highlightthickness=1,  # Slight border around the entry
-            highlightbackground="#FFFFFF",  # White border color
-            highlightcolor="#FFFFFF",       # White color when focused
-            fg="#0E4772",
-            bg="#FFFFFF",
-            font=("Roboto", 14),
-            relief="flat"
-        )
-        self.descriptions.place(x=150, y=10)
-        self.placeholder = 'What project are you engaged in?'
-         
-        # Canvas widget with increased width
-        canvas_width = 200  # Increased width
-        canvas_height = 150
-        canvas = Canvas(root, width=canvas_width, height=canvas_height, bg="#FFFFFF", highlightthickness=0)
-        canvas.place(x=0, y=80)
-
-        # Draw the box with a top-right rounded corner
-        radius = 50  # Radius for the rounded corner
-        x0, y0, x1, y1 = 0, 0, canvas_width, canvas_height  # New dimensions for increased width
-
-        # Draw the straight sides of the box (excluding the top-right corner)
-        canvas.create_polygon(
-            x0, y0,
-            x1 - radius, y0,  # Top edge until the curve starts
-            x1, y0 + radius,  # Curve start to bottom-right
-            x1, y1,
-            x0, y1,
-            x0, y0,
-            fill="#7ACB59", outline="#7ACB59"
-        )
-
-        # Draw the rounded corner arc (top-right corner)
-        canvas.create_arc(
-            x1 - 2 * radius, y0, x1, y0 + 2 * radius,  # Bounding box for the arc
-            start=0, extent=90,  # Arc angle (0 to 90 degrees for top-right)
-            style="pieslice", outline="#7ACB59", fill="#7ACB59"
-        )
-
-        # Add "Today" text inside the box
-        canvas.create_text(
-            20, 20,  # x and y position for the text
-            text="Today",
-            fill="#FFFFFF",  # White color for the text
-            font=("Inter", 18),
-            anchor="nw"  # Align the text to the top-left
-        )
-        
-        # Load the custom font with size 52
-        # custom_font = self.load_custom_font(size=52)
-            # Clock display under "Today" text
-        # hours = str(self.hours).replace('h', '').zfill(2)  # Remove 'h' and pad with zeros
-        hours = self.hours,
-        # minutes = str(self.minutes).replace('m', '').zfill(2)   # Ensures two digits
-        minutes = self.minutes,
-        
-        # Hour label
-        # self.hour_label = Label(root, text=hours, fg="#FFFFFF", bg="#7ACB59",
-        #                    font=("courier", 52))
-        # self.hour_label.place(x=10, y=130)  # Position under the "Today" text
-
-        # # Colon label
-        # self.colon_label = Label(root, text=":", fg="#FFFFFF", bg="#7ACB59",
-        #                     font=("courier", 52))
-        # self.colon_label.place(x=77, y=130)  # Adjust x-coordinate for alignment
-
-        # # Minute label
-        # self.minute_label = Label(root, text=minutes, fg="#FFFFFF", bg="#7ACB59",
-        #                      font=("courier", 52))
-        # self.minute_label.place(x=95, y=130)
-        custom_font = font.Font(family="courier", size=42, weight="normal" )
-
-# Hour label
-        self.hour_label = Label(root, text=hours, fg="#FFFFFF", bg="#7ACB59",
-                           font=custom_font)
-        self.hour_label.place(x=5, y=130)  # Position under the "Today" text
-
-        # Colon label
-        self.colon_label = Label(root, text=":", fg="#FFFFFF", bg="#7ACB59",
-                            font=custom_font)
-        self.colon_label.place(x=70, y=130)  # Adjust x-coordinate for alignment
-
-        # Minute label
-        self.minute_label = Label(root, text=minutes, fg="#FFFFFF", bg="#7ACB59",
-                             font=custom_font)
-        self.minute_label.place(x=105, y=130)
-
-
-        
-        # Bind the Enter key to the get_description_value function
-        self.descriptions.bind("<Return>", self.get_description_value)
-        self.descriptions.bind("<FocusIn>", self.on_focus_in)
-        self.descriptions.bind("<FocusOut>", self.on_focus_out)
-        # Limit characters based on the maximum width (350 pixels)
-        self.max_characters = self.calculate_max_characters() + 5
-        self.descriptions.bind("<KeyRelease>", self.limit_text_length)
-
-        # Set the initial value based on existing description
-        if self.description:
-            self.descriptions.insert(0, self.description)
-        else:
-            self.set_placeholder()
-
-        Frame(self.frame, width=320, height=2, bg="#0E4772").place(x=150, y=35)
+        self.last_notification_time = 0  
+        self.notification_timeout = 3  
+        self.user_id = None
         self.projects = ["no project"]
-        self.project_map = []
-        self.selected_project = tk.StringVar()
-        self.selected_project.set(self.projects[0])
-        self.selected_project.trace("w", self.callback)  # Monitor changes in selection
+        
 
-        # Load dropdown icon
-        # self.vector = PhotoImage(file="images/down.png")
-        self.vector = PhotoImage(file=self.resource_path("images/down.png"))
+        self.setupUI()
 
-        # Create dropdown button
-        # self.button = tk.Button(
-        #     self.frame, text=self.selected_project.get(), image=self.vector,
-        #     compound="right", anchor="w", font=("Roboto", 15),
-        #     fg="#FFFFFF", bg="#7ACB59", activebackground="#7ACB59", width=130, height=20,
-        #     relief="flat", cursor="hand2", command=self.show_menu
-        # )
-        # self.button.place(x=390, y=6)
+    def resource_path(self, relative_path):
+        import sys, os
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.abspath(".")
+        return os.path.join(base_path, relative_path)
 
-        # Create a Frame to hold the button and the icon
-        # Create a Frame to hold the button and the icon
-        # Create a Frame to hold the button and the icon with fixed height
-        # Create a Frame to hold the button and the icon with fixed height and width
-        self.button_frame = tk.Frame(
-            self.frame, bg="#0E4772", height=25, width=115
-        )  # Set fixed height and width
-        self.button_frame.place(x=490, y=6)  # Place at specific coordinates
 
-  # Button with text only, no click effects, and fixed width
-        self.button = tk.Label(
-            self.button_frame, text=self.selected_project.get(), font=("Roboto", 14),
-            fg="#FFFFFF", bg="#0E4772", cursor="hand2", width=10
+    def setupUI(self):
+        self.is_timer_running = False
+        self.total = 0
+        self.exact_time = None
+        self.playTime = None
+        self.break_button_enabled = True
+        self.breakActive = False
+        self.popActive = False
+        self.total_intervals = 0
+        self.active_intervals = 0
+        self.trackingStart_list = []
+
+        # Create the main window
+        self.window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+            NSMakeRect(100, 100, 700, 340),
+            15,  # Titled, closable, resizable
+            2,   # Buffered
+            False
         )
-        self.button.bind("<Button-1>", lambda e: self.show_menu())
+        self.window.setTitle_("SStrack - Home")
+        self.window.setBackgroundColor_(NSColor.whiteColor())
+        self.window.makeKeyAndOrderFront_(None)
 
-        self.button.pack(side="left")
+        content_view = self.window.contentView()
 
-        # Label for the icon on the far right
-        self.icon_label = tk.Label(
-            self.button_frame, image=self.vector, bg="#0E4772"
+        # Header view (blue background)
+        self.header_view = NSView.alloc().initWithFrame_(NSMakeRect(0, 260, 700, 80))
+        self.header_view.setWantsLayer_(True)
+        self.header_view.layer().setBackgroundColor_(
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0).CGColor()
         )
-        self.icon_label.pack(side="left")
-        self.button_frame.bind("<Button-1>", lambda e: self.show_menu())
+        content_view.addSubview_(self.header_view)
 
-        # Bind the label click to the show_menu command
-        self.icon_label.bind("<Button-1>", lambda e: self.show_menu())
-        # To ensure the frame's width is enforced, prevent it from resizing with `propagate`
-        self.button_frame.pack_propagate(False)
+        # Logo
+        logo_path = self.resource_path("images/sstracklogo.png")
+        if os.path.exists(logo_path):
+            logo_image = NSImage.alloc().initByReferencingFile_(logo_path)
+            logo_view = NSImageView.alloc().initWithFrame_(NSMakeRect(40, 10, 130, 60))
+            logo_view.setImage_(logo_image)
+            logo_view.setImageScaling_(2)  # scale proportionally
+            self.header_view.addSubview_(logo_view)
 
-        # Create a menu for the dropdown
-        self.projects_dropdown = tk.Menu(self.frame, tearoff=0, bg="#FFFFFF", fg="#000000", font=("Roboto", 10))
+  
+        
+        # ✅ Test Button (styled like settings button)
+        test_icon_path = self.resource_path("images/Settings_Icon.png")  # Same or another icon
+        if os.path.exists(test_icon_path):
+            test_image = NSImage.alloc().initByReferencingFile_(test_icon_path)
+            test_image.setTemplate_(False)
+            resized_test_image = GUIApp.resize_nsimage(test_image, 26, 26)
+        
+            self.test_button = NSButton.alloc().initWithFrame_(NSMakeRect(598, 291, 18, 18))  # ⬅️ small button frame
+            self.test_button.setBezelStyle_(0)
+            self.test_button.setBordered_(False)
+            self.test_button.setImage_(resized_test_image)
+            self.test_button.setTarget_(self)
+            self.test_button.setAction_("openSettings:")  # ✅ Make sure your handler ends with a colon
+            content_view.addSubview_(self.test_button)
+        
+
+        
+        # Logout button
+        logout_icon_path = self.resource_path("images/log_out_white.png")
+        if os.path.exists(logout_icon_path):
+            logout_image = NSImage.alloc().initByReferencingFile_(logout_icon_path)
+            logout_image.setTemplate_(False)
+            resized_logout_image = GUIApp.resize_nsimage(logout_image, 26, 26)
+            self.logout_button = NSButton.alloc().initWithFrame_(NSMakeRect(648, 32, 18, 18))
+            self.logout_button.setBezelStyle_(0)
+            self.logout_button.setBordered_(False)
+            self.logout_button.setImage_(resized_logout_image)
+            self.logout_button.setTarget_(self)
+            self.logout_button.setAction_("logout:")
+            self.header_view.addSubview_(self.logout_button)
 
 
-        # self.button_frame.bind("<Button-1>", lambda e: self.show_menu())
 
-        # # Bind the label click to the show_menu command
-        # self.icon_label.bind("<Button-1>", lambda e: self.show_menu())
-        # # To ensure the frame's width is enforced, prevent it from resizing with `propagate`
-        # self.button_frame.pack_propagate(False)
 
-        # Create a menu for the dropdown
-        # self.projects_dropdown = tk.Menu(
-        #     self.frame, tearoff=0, bg="#FFFFFF", fg="#000000", font=("Roboto", 10)
-        # )
+        # Username label (example)
+        # ✅ Checkmark Icon
+        check_icon_path = self.resource_path("images/verified.png")
+        if os.path.exists(check_icon_path):
+            check_image = NSImage.alloc().initByReferencingFile_(check_icon_path)
+            self.check_icon = NSImageView.alloc().initWithFrame_(NSMakeRect(230, 170, 30, 30))
+            self.check_icon.setImage_(check_image)
+            self.check_icon.setImageScaling_(2)  # Scale proportionally
+            content_view.addSubview_(self.check_icon)
 
-        # Bind dropdown update
-        self.update_projects_dropdown()  # Initial population of dropdown menu
 
-        frame1 = Frame(self.root, width=700, height=110, bg="#0E4772")
-        frame1.place(x=0, y=230)
+        # ✅ Username Label
+        self.username_label = NSTextField.alloc().initWithFrame_(NSMakeRect(273, 170, 300, 30))
 
-        # Resize the images
-        # self.play_icon, _ = self.resize_image("images/playButton.png", 70, 70, 10)
-        self.play_icon, _ = self.resize_image(self.resource_path("images/playButton.png"), 70, 70, 10)
-        self.pause_icon_grey, _ = self.resize_image(
-            # "images/Pause_Icon_Grey.png", 60, 60, 10
-            self.resource_path("images/Pause_Icon_Grey.png"), 60, 60, 10
+        # ✅ Set it dynamically from self.name
+        if hasattr(self, "name") and self.name:
+            self.username_label.setStringValue_(self.name)
+        else:
+            self.username_label.setStringValue_("User Name")  # fallback
+
+        self.username_label.setFont_(NSFont.boldSystemFontOfSize_(22))
+        self.username_label.setBezeled_(False)
+        self.username_label.setDrawsBackground_(False)
+        self.username_label.setEditable_(False)
+        self.username_label.setSelectable_(False)
+        self.username_label.setTextColor_(
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0)
         )
-              # self.break_icon, _ = self.resize_image(
-        #     "images/BreakButton.png", 60, 60, 10
-        # )
-        self.play_icon_grey, _ = self.resize_image(
-            self.resource_path("images/Play_Icon_Grey.png"), 70, 70, 10
-            # "images/Play_Icon_Grey.png", 70, 70, 10
-        )
-        # self.pause_icon, _ = self.resize_image("images/Pause_Red.png", 60, 60, 10)
-        self.pause_icon, _ = self.resize_image(self.resource_path("images/Pause_Red.png"), 60, 60, 10)
-        # Create the play button
-        # Create a Canvas widget to hold the images (transparent effect)
-        self.canvas = tk.Canvas(
-            frame1, width=700, height=110, bg="#0E4772", highlightthickness=0
-        )
-        self.canvas.place(x=0, y=0)
+        content_view.addSubview_(self.username_label)
 
-        # Adjust the y-position for images to align them properly like before
-        y_position = 5  # Same as you had with Button.place(y=5)
+        # ✅ Description / Project Entry (grey placeholder + underline)
+# ✅ Add this line before creating project_field
+        self.placeholder = "enter your project description"
 
-        # Add the play button to the canvas (place at x=40, y=5 like the original Button)
-        self.play_button = self.canvas.create_image(
-            40, y_position, image=self.play_icon, anchor=tk.NW
-        )
-        self.canvas.tag_bind(self.play_button, "<Button-1>", self.click_play_button)
+        # ✅ Now create project_field normally
+        self.project_field = NSTextField.alloc().initWithFrame_(NSMakeRect(230, 130, 300, 28))
+        self.project_field.setPlaceholderString_(self.placeholder)  # <- Use the variable now
+        self.project_field.setFont_(NSFont.systemFontOfSize_(14))
+        self.project_field.setTextColor_(NSColor.grayColor())
+        self.project_field.setBezeled_(False)
+        self.project_field.setDrawsBackground_(False)
+        self.project_field.setEditable_(True)
+        self.project_field.setSelectable_(True)
+        self.project_field.setBordered_(False)
+        content_view.addSubview_(self.project_field)
 
-        # Add the pause button to the canvas (place at x=100, y=10 to avoid overlap)
-        self.pause_button = self.canvas.create_image(
-            100, y_position + 8, image=self.pause_icon_grey, anchor=tk.NW
-        )
-        self.canvas.tag_bind(
-            self.pause_button, "<Button-1>", self.click_pause_button
-        )  # Bind the click event for the pause button
+        self.project_field.setTarget_(self)
+        self.project_field.setAction_("getDescriptionValue:")
+        # self.project_field.setSendsActionOnEndEditing_(True)
 
-        # Lower the play button to make sure pause is on top
-        self.canvas.lift(self.play_button)
-
-        # Bind mouse enter and leave events for the play button
-        self.canvas.tag_bind(
-            self.play_button, "<Enter>", lambda e: self.canvas.config(cursor="hand2")
-        )
-        self.canvas.tag_bind(
-            self.play_button, "<Leave>", lambda e: self.canvas.config(cursor="")
+        # ✅ Add blue underline below the project field
+        underline = NSView.alloc().initWithFrame_(NSMakeRect(230, 128, 300, 2))
+        underline.setWantsLayer_(True)
+        underline.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0).CGColor())
+        content_view.addSubview_(underline)
+        
+        
+        # ✅ Company Button (Right of Username and Project Field)
+        self.company_button = NSButton.alloc().initWithFrame_(NSMakeRect(550, 210, 120, 32))  # (x, y, width, height)
+        self.company_button.setBezelStyle_(0)  # No standard macOS button style
+        self.company_button.setBordered_(False)
+        self.company_button.setWantsLayer_(True)
+        self.company_button.layer().setBackgroundColor_(
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0).CGColor()  # Same dark blue color
         )
 
-        # Bind mouse enter and leave events for the pause button
-        self.canvas.tag_bind(
-            self.pause_button, "<Enter>", lambda e: self.canvas.config(cursor="hand2")
-        )
-        self.canvas.tag_bind(
-            self.pause_button, "<Leave>", lambda e: self.canvas.config(cursor="")
-        )
+        # ✅ Set Button Text from self.company
+        company_name = self.company if hasattr(self, "company") and self.company else "Company"
 
-        # Initially hide the pause button (like before)
-        # self.canvas.itemconfig(self.pause_button, state='hidden')
-        # abdullah ka button
-              # Create a button
+        title_attr = NSMutableAttributedString.alloc().initWithString_(company_name)
+        title_attr.addAttribute_value_range_(
+            NSForegroundColorAttributeName,
+            NSColor.whiteColor(),
+            (0, len(company_name))  # ⚡ Use dynamic length
+        )
+        self.company_button.setAttributedTitle_(title_attr)
+
+        # ✅ Set Button Action
+        self.company_button.setTarget_(self)
+        self.company_button.setAction_("printCompanyName:")
+
+        content_view.addSubview_(self.company_button)
+
+
+
+
+        # --- Dropdown below the button ---
+        # --- Dropdown below the button ---
+        self.project_dropdown = NSPopUpButton.alloc().initWithFrame_pullsDown_(NSMakeRect(550, 130, 120, 32), False)
+
+        # ✅ Dynamically add items from self.projects
+        if hasattr(self, "projects") and self.projects:
+            self.project_dropdown.addItemsWithTitles_(self.projects)
+        else:
+            self.project_dropdown.addItemsWithTitles_(["no project"])  # fallback if empty
+
+        # Style the dropdown similarly
+        self.project_dropdown.setFont_(NSFont.boldSystemFontOfSize_(13))
+        self.project_dropdown.setBordered_(False)
+        self.project_dropdown.setWantsLayer_(True)
+        self.project_dropdown.layer().setBackgroundColor_(
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0).CGColor()
+        )
+        self.project_dropdown.setContentTintColor_(NSColor.whiteColor())  # Set text color to white if supported
+
+        self.project_dropdown.setTarget_(self)
+        self.project_dropdown.setAction_("projectSelected:")
+
+        content_view.addSubview_(self.project_dropdown)
+
+
+        # Style the dropdown similarly
+        self.project_dropdown.setFont_(NSFont.boldSystemFontOfSize_(13))
+        self.project_dropdown.setBordered_(False)
+        self.project_dropdown.setWantsLayer_(True)
+        self.project_dropdown.layer().setBackgroundColor_(
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0).CGColor()
+        )
+        self.project_dropdown.setContentTintColor_(NSColor.whiteColor())  # Set text color to white if supported
+
+        self.project_dropdown.setTarget_(self)
+        self.project_dropdown.setAction_("projectSelected:")
+
+        content_view.addSubview_(self.project_dropdown)
+        
+        # Timer Background View (Green with Rounded Top-Left Corner)
+        self.timer_view = NSView.alloc().initWithFrame_(NSMakeRect(-30, 10, 240, 250))
+        self.timer_view.setWantsLayer_(True)
+        self.timer_view.layer().setBackgroundColor_(
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.48, 0.796, 0.349, 1.0).CGColor()  # #7ACB59
+        )
+        content_view.addSubview_(self.timer_view)
+        
+        # Create path for top-left rounded corner
+        path = CGPathCreateMutable()
+        rect = CGRectMake(0, 0, 240, 250)  # ⬅️ Fix this line
+        CGPathAddRoundedRect(path, None, rect, 40, 40)  # 40-radius on all corners (mask will only reveal top-left)
+        rounded_layer = CAShapeLayer.layer()
+        rounded_layer.setFrame_(rect)
+        rounded_layer.setPath_(path)
+        self.timer_view.layer().setMask_(rounded_layer)
+        
+        # "Today" Label
+        today_label = NSTextField.alloc().initWithFrame_(NSMakeRect(50, 200, 100, 30))
+        today_label.setStringValue_("Today")
+        today_label.setFont_(NSFont.boldSystemFontOfSize_(18))
+        today_label.setTextColor_(NSColor.whiteColor())
+        today_label.setBezeled_(False)
+        today_label.setDrawsBackground_(False)
+        today_label.setEditable_(False)
+        today_label.setSelectable_(False)
+        self.timer_view.addSubview_(today_label)
+        
+        # Hour Label
+        self.hour_label = NSTextField.alloc().initWithFrame_(NSMakeRect(20, 110, 100, 80))  # Bigger width and height
+        self.hour_label.setStringValue_(str(self.hours))  # ← Here you show self.hours dynamically
+        self.hour_label.setFont_(NSFont.boldSystemFontOfSize_(50))
+        self.hour_label.setBezeled_(False)
+        self.hour_label.setDrawsBackground_(False)
+        self.hour_label.setEditable_(False)
+        self.hour_label.setSelectable_(False)
+        self.hour_label.setTextColor_(NSColor.whiteColor())
+        self.hour_label.setAlignment_(1)  # Center alignment (optional)
+        self.timer_view.addSubview_(self.hour_label)
+
+
+        # First check if Roboto is really installed, fallback if not
+        font = NSFont.fontWithName_size_("Roboto", 50)
+        if font is None:
+            font = NSFont.boldSystemFontOfSize_(50)  # fallback to system bold font
+
+        self.hour_label.setFont_(font)
+        self.hour_label.setBezeled_(False)
+        self.hour_label.setDrawsBackground_(False)
+        self.hour_label.setEditable_(False)
+        self.hour_label.setSelectable_(False)
+        self.hour_label.setTextColor_(NSColor.whiteColor())
+        self.hour_label.setAlignment_(1)  # Center alignment (optional)
+        self.timer_view.addSubview_(self.hour_label)
+
+        
+        # Colon Label
+        colon_label = NSTextField.alloc().initWithFrame_(NSMakeRect(110, 145, 20, 40))
+        colon_label.setStringValue_(":")
+        colon_label.setFont_(NSFont.boldSystemFontOfSize_(36))
+        colon_label.setBezeled_(False)
+        colon_label.setDrawsBackground_(False)
+        colon_label.setEditable_(False)
+        colon_label.setSelectable_(False)
+        colon_label.setTextColor_(NSColor.whiteColor())
+        self.timer_view.addSubview_(colon_label)
+        
+        # --- Minute Label (Updated) ---
+        print(f"✅ Debug: Current minutes value is: {self.minutes}")
+        self.minute_label = NSTextField.alloc().initWithFrame_(NSMakeRect(120, 110, 100, 80))  # Bigger frame
+        self.minute_label.setStringValue_(str(self.minutes))  # ← Show self.minutes dynamically
+        self.minute_label.setFont_(NSFont.boldSystemFontOfSize_(50))
+        self.minute_label.setBezeled_(False)
+        self.minute_label.setDrawsBackground_(False)
+        self.minute_label.setEditable_(False)
+        self.minute_label.setSelectable_(False)
+        self.minute_label.setTextColor_(NSColor.whiteColor())
+        self.minute_label.setAlignment_(1)  # Optional: Center alignment
+        self.timer_view.addSubview_(self.minute_label)
+
+
+        # Safely use Roboto font if available, fallback otherwise
+        minute_font = NSFont.fontWithName_size_("Roboto", 50)
+        if minute_font is None:
+            minute_font = NSFont.boldSystemFontOfSize_(50)  # fallback to system bold
+
+        self.minute_label.setFont_(minute_font)
+
+        self.minute_label.setBezeled_(False)
+        self.minute_label.setDrawsBackground_(False)
+        self.minute_label.setEditable_(False)
+        self.minute_label.setSelectable_(False)
+        self.minute_label.setTextColor_(NSColor.whiteColor())
+        self.minute_label.setAlignment_(1)  # Optional: Center text
+        self.timer_view.addSubview_(self.minute_label)
+
+        
+        
+        
+         # --- Bottom blue view (like header) ---
+        self.bottom_view = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, 700, 110))
+        self.bottom_view.setWantsLayer_(True)
+        self.bottom_view.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0).CGColor())
+        content_view.addSubview_(self.bottom_view)
+
     
-        # Create the label (instead of a button)
-        self.break_button = tk.Label(
-            frame1,
-            text="Break",
-            bg="#E8F4FC",       # Background color
-            fg="#7094B0",       # Text color
-            font=("Arial", 14, "bold"),
-            width=20,               # Width in text units
-            height=2,            # Height in text units
-            anchor="center"     # Center align the text
+        # ✅ First load images
+        self.play_icon = self.load_icon(self.resource_path("images/playButton.png"), 80, 80)
+        self.play_icon_grey = self.load_icon(self.resource_path("images/Play_Icon_Grey.png"), 80, 80)
+        self.pause_icon_grey = self.load_icon(self.resource_path("images/Pause_Icon_Grey.png"), 60, 60)
+        self.pause_icon = self.load_icon(self.resource_path("images/Pause_Red.png"), 60, 60)
+
+
+        # ✅ Now safe to create Play Button
+        self.play_button = NSButton.alloc().initWithFrame_(NSMakeRect(40, 40, 40, 40))
+        self.play_button.setImage_(self.play_icon)
+        self.play_button.setBezelStyle_(0)
+        self.play_button.setBordered_(False)
+        self.play_button.setImageScaling_(2)
+        self.play_button.setTarget_(self)
+        self.play_button.setAction_("playButtonClicked:")
+        self.bottom_view.addSubview_(self.play_button)
+
+        # ✅ Create Pause Button
+        self.pause_button = NSButton.alloc().initWithFrame_(NSMakeRect(100, 40, 40, 40))
+        self.pause_button.setImage_(self.pause_icon_grey)
+        self.pause_button.setBezelStyle_(0)
+        self.pause_button.setBordered_(False)
+        self.pause_button.setImageScaling_(2)
+        self.pause_button.setTarget_(self)
+        self.pause_button.setAction_("pauseButtonClicked:")
+        self.bottom_view.addSubview_(self.pause_button)
+
+
+
+        # --- Break Button ---
+        self.break_button = NSButton.alloc().initWithFrame_(NSMakeRect(210, 40, 160, 40))
+        self.break_button.setBezelStyle_(0)
+        self.break_button.setBordered_(False)
+        self.break_button.setWantsLayer_(True)
+        self.break_button.layer().setBackgroundColor_(
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.91, 0.96, 0.99, 1.0).CGColor()
         )
+        self.break_button.layer().setCornerRadius_(6)  # Optional: soft edges
+        self.break_button.layer().setBorderWidth_(0)   # No border
 
-        # Place the label on the canvas
-        self.break_button.place(x=200, y=30)
-
-        # Bind a click event to mimic button behavior
-        self.break_button.bind("<Button-1>", self.click_break_button)
-
-# Create a rounded button
-        # Styled label for the link
-        self.link_label = tk.Label(
-            frame1,
-            text="VIEW BREAK TIMELINE",
-            bg="#0E4772",  # Background color
-            fg="#FFFFFF",  # Text color
-            font=("Arial", 8, ),
-            width=20,
-            height=1,
-            cursor="hand2"
+        # Set dark blue title
+        break_text_attr = NSAttributedString.alloc().initWithString_attributes_(
+            "Break",
+            NSDictionary.dictionaryWithObject_forKey_(
+                NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0),
+                NSForegroundColorAttributeName
+            )
         )
-        self.link_label.place(x=232, y=72)
-        # Bind the label to open the link
-        self.link_label.bind("<Button-1>", self.open_link)
-      
-# Create a rounded button on a canvas
- 
-# Create a rounded button
- 
+        self.break_button.setAttributedTitle_(break_text_attr)
+        self.break_button.setFont_(NSFont.boldSystemFontOfSize_(18))
+        self.bottom_view.addSubview_(self.break_button)
+        
+        # --- View Break Timeline (Clickable Text Button) ---
+        self.view_break_timeline_button = NSButton.alloc().initWithFrame_(NSMakeRect(230, 20, 120, 20))  # Below Break button
+        self.view_break_timeline_button.setBezelStyle_(0)
+        self.view_break_timeline_button.setBordered_(False)
+        self.view_break_timeline_button.setWantsLayer_(True)
+        self.view_break_timeline_button.layer().setBackgroundColor_(NSColor.clearColor())
 
-        # self.play_button.config(state=tk.NORMAL)
-        # self.pause_button.config(state=tk.DISABLED)
-        # self.break_icon = PhotoImage(file="images/BreakButton.png")
-        # self.break_start_icon = PhotoImage(file="images/activeBreak.png")                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
-        # # Add the pause button to the canvas (place at x=100, y=10 to avoid overlap)
-        # self.break_Button = self.canvas.create_image(
-        #     475, 14, image=self.break_icon, anchor=tk.NW
-        # )
-        # self.canvas.tag_bind(
-        #     self.break_Button, "<Button-1>", self.click_break_button
-        # )  # Bind the click event for the pause button
-
-   
-        # Bind mouse enter and leave events for the pause button
-        # self.canvas.tag_bind(
-        #     self.break_Button, "<Enter>", lambda e: self.canvas.config(cursor="hand2")
-        # )
-        # self.canvas.tag_bind(
-        #     self.break_Button, "<Leave>", lambda e: self.canvas.config(cursor="")
-        # )
-
-
-
-        # Adjust positions based on the length of hours
-        if len(self.hours) == 2:  # Single-digit hour
-            colon_x = 320 + 57  # Adjust for single-digit hour (add 30 pixels to x)
-            minute_x = colon_x + 15  # Adjust minute label (15 pixels after colon)
-        else:  # Double-digit hour
-            colon_x = 320 + 60  # Adjust for double-digit hour (add 50 pixels to x)
-            minute_x = colon_x + 15  # Adjust minute label (15 pixels after colon)
-
-        # Place the colon and minute labels based on the calculated positions
-        # self.colon_label.place(x=colon_x, y=47)
-        # self.minute_label.place(x=minute_x, y=47)
-
-        # self.TIMELINE, _ = self.resize_image("images/timeline.png", 160, 40, 0)
-        self.TIMELINE, _ = self.resize_image(self.resource_path("images/timeline.png"), 160, 40, 0)
-        TIMELINE_label = tk.Button(
-            frame1,
-            image=self.TIMELINE,
-            bg="#0E4772",
-            border=0,
-            command=self.view_Timeline,
-            cursor="hand2",
+        view_break_attr = NSAttributedString.alloc().initWithString_attributes_(
+            "View Break Timeline",
+            NSDictionary.dictionaryWithObject_forKey_(
+                NSColor.whiteColor(),  # White color text
+                NSForegroundColorAttributeName
+            )
         )
-        TIMELINE_label.place(x=480, y=30)
-        self.python_exe = sys.executable
+        self.view_break_timeline_button.setAttributedTitle_(view_break_attr)
+        self.view_break_timeline_button.setFont_(NSFont.systemFontOfSize_(10))
+        # --- Set click action ---
+        self.view_break_timeline_button.setTarget_(self)
+        self.view_break_timeline_button.setAction_("openViewBreakTimeline:")
+
+        self.bottom_view.addSubview_(self.view_break_timeline_button)
+
+        # --- View Timeline Button ---
+        self.view_timeline_button = NSButton.alloc().initWithFrame_(NSMakeRect(480, 40, 160, 40))
+        self.view_timeline_button.setBezelStyle_(0)
+        self.view_timeline_button.setBordered_(False)
+        self.view_timeline_button.setWantsLayer_(True)
+        self.view_timeline_button.layer().setBackgroundColor_(
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.91, 0.96, 0.99, 1.0).CGColor()
+        )
+        self.view_timeline_button.layer().setCornerRadius_(6)  # Optional
+        self.view_timeline_button.layer().setBorderWidth_(0)   # No border
+
+        # Set dark blue title
+        timeline_text_attr = NSAttributedString.alloc().initWithString_attributes_(
+            "VIEW TIMELINE",
+            NSDictionary.dictionaryWithObject_forKey_(
+                NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0),
+                NSForegroundColorAttributeName
+            )
+        )
+        self.view_timeline_button.setAttributedTitle_(timeline_text_attr)
+        self.view_timeline_button.setFont_(NSFont.boldSystemFontOfSize_(16))
+        self.bottom_view.addSubview_(self.view_timeline_button)
+        
+        # Start background listeners (mouse and keyboard)
+        threading.Thread(target=self.start_listeners, daemon=True).start()
+
+        # Initialize activity monitor
+        self.activity_monitor = ActivityMonitor()
+
+        # Instead of BooleanVar, simple bools
+        self.launch_monitor_enabled = False
+        self.auto_start_enabled = False
+        self.selected_project_name = ""
+        self.description = ""
+        self.projectId = None
+       
+        # ✅ Add this block during setupUI (preferably at end of setupUI)
+        self.updateProject_lock = threading.Lock()
+        self.update_daily_time_lock = threading.Lock()
+        self.click_pause_button_lock = threading.Lock()
         self.fetch_data_lock = threading.Lock()
-        # self.add_shortcut_to_startup()  # Add SSTRACK to startup
-
-        # Start the first update check immediately upon initialization
-        self.schedule_update_check()
-        self.screenshot_data_list = []
-        self.sleep_mode = False
-        self.exact_time = datetime.datetime.now(pytz.UTC)
-        self.puncEndTime = datetime.datetime.now(pytz.UTC)
-        self.startTime = datetime.date.today()
-        self.tl = False
-        # Create threads and set them as daemons
+        self.employeeSetting_lock = threading.Lock()
+        self.handle_sleep_mode_lock = threading.Lock()
         self.play_timer_lock = threading.Lock()
         self.screenshots_add_lock = threading.Lock()
         self.stop_timer_lock = threading.Lock()
         self.screenshots_data_lock = threading.Lock()
-        self.handle_sleep_mode_lock = threading.Lock()
         self.check_activity_lock = threading.Lock()
         self.update_time_lock = threading.Lock()
         self.breakExecution_lock = threading.Lock()
         self.startBreakTime_lock = threading.Lock()
         self.stopBreakTime_lock = threading.Lock()
-
-        self.updateProject_lock = threading.Lock()
-        self.update_daily_time_lock = threading.Lock()
-        self.click_pause_button_lock = threading.Lock()
-        self.employeeSetting_lock = threading.Lock()
         self.archive_project_lock = threading.Lock()
         self.on_project_select_lock = threading.Lock()
         self.update_User_status_lock = threading.Lock()
-        # self.notify_user()
-        # speaker = win32com.client.Dispatch("SAPI.SpVoice")
-        # speaker.Speak("hi Welcome to S STRACK") # <--------- I added this line
 
-        # Create mouse and keyboard listeners
-        # self.mouse_listener = mouse.Listener(
-        #     on_move=self.on_move, on_click=self.on_click, on_scroll=self.on_scroll
-        # )
-        # self.keyboard_listener = keyboard.Listener(
-        #     on_press=self.on_press, on_release=self.on_release
-        # )
-        # self.total = 0
-        # # Start the listeners
-        # self.mouse_listener.start()
-        # self.keyboard_listener.start()
-        # Use a timer to call the functions after the window is shown
-        # Start the listeners in a separate thread
-        threading.Thread(target=self.start_listeners, daemon=True).start()
-        # self.userProject()
-        # self.fetch_projects()
-        self.activity_monitor = ActivityMonitor()
-        # Add the checkboxes for startup and auto-start functionality
-        self.launch_monitor_var = tk.BooleanVar()
-        self.auto_start_var = tk.BooleanVar()
-        self.break_button_enabled = True 
+   # --- Define the function to open the link ---
+   
+   
+    def openViewBreakTimeline_(self, sender):
+        url = "https://www.sstrack.io/"  # Change your link here!
+        webbrowser.open(url) 
+    @objc.IBAction
+    def printCompanyName_(self, sender):
+        print("Company Name: i8is.com")
+        
+    @objc.IBAction
+    def projectSelected_(self, sender):
+        selected_project = self.project_dropdown.titleOfSelectedItem()
+        print(f"Selected project: {selected_project}")    
+    @staticmethod
+    def resize_nsimage(image, new_width, new_height):
+        from AppKit import NSSize
+        resized = NSImage.alloc().initWithSize_(NSSize(new_width, new_height))
+        resized.lockFocus()
+        image.drawInRect_fromRect_operation_fraction_(
+            ((0, 0), (new_width, new_height)),
+            ((0, 0), image.size()),
+            2,
+            1.0
+        )
+        resized.unlockFocus()
+        return resized
+
+
+
+    @objc.typedSelector(b"v@:@")
+    def openSettings_(self, sender):
+        print("✅ Test button clicked!")
+        
+            # Safely close existing popup if already open
+        if hasattr(self, "test_popup") and self.test_popup is not None:
+            self.test_popup.close()
+            self.test_popup = None
+
+        # Create the popup window
+        self.test_popup = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+            NSMakeRect(250, 250, 700, 340),  # Same size
+            15,  # Titled, Closable
+            2,
+            False
+        )
+        self.test_popup.setTitle_("Settings")
+        self.test_popup.makeKeyAndOrderFront_(None)
+
+        # Content View
+        content = self.test_popup.contentView()
+        content.setWantsLayer_(True)
+        content.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0).CGColor())
+
+        # --- Header Logo (small) ---
+        settings_icon_path = self.resource_path("images/logoTray.png")
+        if os.path.exists(settings_icon_path):
+            icon_image = NSImage.alloc().initByReferencingFile_(settings_icon_path)
+            resized_icon = GUIApp.resize_nsimage(icon_image, 20, 20)
+            icon_view = NSImageView.alloc().initWithFrame_(NSMakeRect(20, 310, 20, 20))
+            icon_view.setImage_(resized_icon)
+            icon_view.setImageScaling_(2)
+            content.addSubview_(icon_view)
+
+        # --- Title Label ---
+        title_label = NSTextField.alloc().initWithFrame_(NSMakeRect(50, 310, 200, 20))
+        title_label.setStringValue_("Settings")
+        title_label.setFont_(NSFont.systemFontOfSize_(14))
+        title_label.setBezeled_(False)
+        title_label.setDrawsBackground_(False)
+        title_label.setEditable_(False)
+        title_label.setSelectable_(False)
+        title_label.setTextColor_(NSColor.whiteColor())
+        content.addSubview_(title_label)
+
+        # --- Close Button ("X") ---
+        self.close_button = NSButton.alloc().initWithFrame_(NSMakeRect(660, 310, 20, 20))
+        self.close_button.setTitle_("X")
+        self.close_button.setFont_(NSFont.boldSystemFontOfSize_(14))
+        self.close_button.setBezelStyle_(0)
+        self.close_button.setBordered_(False)
+        self.close_button.setWantsLayer_(True)
+
+        # ✅ Background Black
+        self.close_button.layer().setBackgroundColor_(NSColor.blackColor().CGColor())
+
+        # ✅ Text White
+        text_attr = NSMutableAttributedString.alloc().initWithString_("X")
+        text_attr.addAttribute_value_range_(
+            NSForegroundColorAttributeName,
+            NSColor.whiteColor(),
+            (0, 1)
+        )
+        self.close_button.setAttributedTitle_(text_attr)
+
+        self.close_button.setTarget_(self)
+        self.close_button.setAction_("closeTestPopup:")
+        content.addSubview_(self.close_button)
+
+        # --- Field Labels (White Text) ---
+        field_names = [
+            ("Launch on Startup", 250),
+            ("Auto-start Tracking", 220),
+            ("Screenshots:", 180),
+            ("Auto-pause:", 150),
+            ("Weekly limit:", 120),
+            ("Allow Offline Time:", 90),
+            ("Activity Level Tracking:", 60),
+            ("App & URL Tracking:", 30)
+        ]
+
+        for text, y in field_names:
+            field = NSTextField.alloc().initWithFrame_(NSMakeRect(30, y, 300, 20))
+            field.setStringValue_(text)
+            field.setFont_(NSFont.systemFontOfSize_(12))
+            field.setBezeled_(False)
+            field.setDrawsBackground_(False)
+            field.setEditable_(False)
+            field.setSelectable_(False)
+            field.setTextColor_(NSColor.whiteColor())
+            content.addSubview_(field)
+
+    @objc.typedSelector(b"v@:@")
+    def closeTestPopup_(self, sender):
+        print("Closing Settings popup")
+        if hasattr(self, "test_popup") and self.test_popup is not None:
+            self.test_popup.orderOut_(None)  # Only hide popup
+            self.test_popup = None
+
+    def load_icon(self, path, width, height):
+        if os.path.exists(path):
+            img = NSImage.alloc().initByReferencingFile_(path)
+            resized = GUIApp.resize_nsimage(img, width, height)
+            return resized
+        else:
+            return None
+
+
+
+    @objc.typedSelector(b"v@:@")
+    def playButtonClicked_(self, sender):
+        print("✅ Play button clicked")
+        try:
+            # ✅ UI changes first (change button icons)
+            if hasattr(self, "play_button") and self.play_icon_grey:
+                self.play_button.setImage_(self.play_icon_grey)
+
+            if hasattr(self, "pause_button") and self.pause_icon:
+                self.pause_button.setImage_(self.pause_icon)
+
+            # ✅ Now call your full click_play_button logic
+            self.click_play_button()
+
+        except Exception as e:
+            print(f"⚠️ Failed to start tracking: {e}")
+
+    
+
+
+
+
+    @objc.typedSelector(b"v@:@")
+    def pauseButtonClicked_(self, sender):
+        print("⏸️ Pause button clicked")
+
+        try:
+            # ✅ Revert play/pause icons
+            if hasattr(self, "play_button") and self.play_icon:
+                self.play_button.setImage_(self.play_icon)
+
+            if hasattr(self, "pause_button") and self.pause_icon_grey:
+                self.pause_button.setImage_(self.pause_icon_grey)
+
+            # ✅ Lock section
+            with self.click_pause_button_lock:
+                if self.is_timer_running:
+                    self.is_timer_running = False
+
+                    # ✅ Remove tray icon (PyObjC version of `self.icon.stop()`, if applicable)
+                    # Add code here if you're using NSStatusBar-based tray icon
+
+                # ✅ Load time_entry_id
+                try:
+                    with open(GUIApp.get_data_file_path("time_entry_id.pkl"), "rb") as f:
+                        timeEntryId = pickle.load(f)
+                except (FileNotFoundError, EOFError):
+                    print("❌ time_entry_id.pkl not found or empty.")
+                    return
+
+                # ✅ Load trackingStop_list
+                self.trackingStop_list = []
+                stop_list_path = GUIApp.get_data_file_path("trackingStop_list.pkl")
+                if os.path.isfile(stop_list_path):
+                    try:
+                        with open(stop_list_path, "rb") as f:
+                            self.trackingStop_list = pickle.load(f)
+                    except EOFError:
+                        print("⚠️ trackingStop_list.pkl is empty. Starting fresh.")
+
+                # ✅ Append tracking stop data
+                current_time = self.exact_time if self.sleep_mode else datetime.datetime.now(pytz.UTC)
+                trackingstop = {"endTime": current_time, "timeEntryId": timeEntryId}
+                self.trackingStop_list.append(trackingstop)
+
+                # ✅ Save updated stop list
+                with open(stop_list_path, "wb") as f:
+                    pickle.dump(self.trackingStop_list, f)
+
+                # ✅ Display Notification
+                if not self.breakActive:
+                    message = self.description or ""
+                    if self.selected_project_name and self.selected_project_name != "no project":
+                        project_name = self.selected_project_name.upper()
+                        message = f"{project_name}\n{message}"
+
+                    os.system('terminal-notifier -title "SSTRACK" -message "Tracking stopped" -appIcon "images/animatedlogo.png"')
+
+                # ✅ Reset intervals and break
+                self.total_intervals = 0
+                self.active_intervals = 0
+                self.breakStartedOn = current_time
+
+                # ✅ Handle popup & break fetching
+                if self.popActive:
+                    self.popActive = False
+                    threading.Thread(target=self.getBreaktimes).start()
+
+                # ✅ Start stop timer
+                threading.Thread(target=self.stop_Timer).start()
+
+        except Exception as e:
+            print(f"⚠️ An error occurred in pauseButtonClicked_: {e}")
+
+
 
 
     def start_listeners(self):
@@ -607,10 +816,7 @@ class GUIApp:
         self.fetch_projects()
         self.connect_to_server()
         self.getBreaktimes()
-        self.getRemainingBreakTime()
-    
-    
-    
+        self.getRemainingBreakTime()  
     @staticmethod
     def get_app_dir():
         """Get the directory where the executable is running."""
@@ -620,8 +826,13 @@ class GUIApp:
     
     @staticmethod
     def get_data_file_path(filename):
-        """Return the full path of a file inside the app directory."""
-        return os.path.join(GUIApp.get_app_dir(), filename) 
+        """
+        Return the full path to a file stored in the user's Application Support directory for SStrack.
+        This ensures the app has write access and avoids sandbox issues.
+        """
+        support_dir = os.path.join(Path.home(), "Library", "Application Support", "SStrack")
+        os.makedirs(support_dir, exist_ok=True)  # Ensure directory exists
+        return os.path.join(support_dir, filename)
     @staticmethod
     def resource_path(relative_path):
         """ Get absolute path to resource, works for development and PyInstaller """
@@ -634,28 +845,7 @@ class GUIApp:
         return os.path.join(base_path, relative_path)
 
 
-    # def speak_text(self, text):
-    #     try:
-    #         speaker = win32com.client.Dispatch("SAPI.SpVoice")
-    #         speaker.Speak(text)
-    #     except Exception as e:
-    #         print(f"Voice functionality is unavailable: {e}")
-    #         # Optional: Log the error to a file for debugging
-    #         with open("error_log.txt", "a") as log_file:
-    #             log_file.write(f"Voice error: {str(e)}\n")
 
-    # Load the font dynamically
-    # Function to load the custom font dynamically
-    # def load_custom_font(self, size=52):
-    #     # Path to the custom font
-    #     font_path = os.path.join(os.path.dirname(__file__), "font", "Technology.ttf")
-        
-    #     # Load the font using PIL and register it with tkinter
-    #     pil_font = ImageFont.truetype(font_path, size)
-    #     family = pil_font.getname()[0]
-
-    #     # Return a tkinter font object
-    #     return font.Font(family=family, size=size)
 
     def load_custom_font(self, size=52):
         # Path to the font file
@@ -770,7 +960,9 @@ class GUIApp:
 
     def on_release(self, key):
         pass
-
+  
+  
+  
     def userProject(self):
         try:
             headers = {"Authorization": "Bearer " + self.token}
@@ -787,21 +979,30 @@ class GUIApp:
                     and description != ""
                 ):
                     self.description = description
-                    self.descriptions.delete(0, tk.END)  # Clear the entry widget
-                    self.descriptions.insert(0, self.description)
+                    self.project_field.setStringValue_(self.description)
+    
                 projectName = project.get('name')
                 if projectName is not None:
                     self.projectId = project.get("_id")
-                    self.selected_project.set(projectName)
                     self.selected_project_name = projectName
+    
+                    # Select project in the dropdown
+                    if projectName in self.projects:
+                        self.project_dropdown.selectItemWithTitle_(projectName)
+                    else:
+                        self.project_dropdown.selectItemAtIndex_(0)  # "no project"
                 else:
-                    self.selected_project.set("no project")
+                    self.project_dropdown.selectItemAtIndex_(0)  # "no project"
+    
                 self.fixProject()
+    
             else:
                 print("Failed to fetch user project.")
         except Exception as e:
             print(f"Error fetching user projects: {e}")
-
+ 
+ 
+    
     def fetch_projects(self):
         try:
             headers = {
@@ -855,31 +1056,23 @@ class GUIApp:
 
         except Exception as e:
             print(f"Error fetching projects: {e}")
-
     def update_projects_dropdown(self):
         try:
-            # Clear existing menu options
-            self.projects_dropdown.delete(0, "end")
-            # Ensure the current selected project is valid
-            if self.selected_project.get() not in self.projects:
-                self.selected_project.set("no project")
-            # Calculate a fixed width based on the button width
-            fixed_width = 15  # Set a fixed width in terms of characters
+            # First remove all existing items
+            self.project_dropdown.removeAllItems()
 
-            for project in self.projects:
-                # Add project with fixed length (by padding spaces)
-                padded_label = project.ljust(fixed_width)  # Pad to fixed width
-                self.projects_dropdown.add_command(
-                    label=padded_label,
-                    command=lambda p=project: self.selected_project.set(p),
-                )
+            # Add updated projects
+            if hasattr(self, "projects") and self.projects:
+                self.project_dropdown.addItemsWithTitles_(self.projects)
+            else:
+                self.project_dropdown.addItemsWithTitles_(["no project"])
 
-            self.fixProject()
-
-            # Update button text to selected project with ellipsis if necessary
+            # Optionally set default selected item
+            if self.projects and len(self.projects) > 0:
+                self.project_dropdown.selectItemAtIndex_(0)
 
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An error occurred in update_projects_dropdown: {e}")
 
     def fixProject(self):
         selected_project_name = self.selected_project.get()
@@ -930,7 +1123,7 @@ class GUIApp:
                     else:
                         print("not success")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An error occurred updateProject: {e}")
             return None
 
     def show_custom_notification(project_name, description):
@@ -1000,10 +1193,10 @@ class GUIApp:
                         # threading.Thread(target=self.updateProject).start()
                         self.updateProject()
                     except Exception as e:
-                        print(f"An error occurred: {e}")
+                        print(f"An error occurred sub on_project_select: {e}")
                         return None
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An error occurred on_project_select: {e}")
             return None
 
     def set_placeholder(self):
@@ -1012,32 +1205,37 @@ class GUIApp:
         self.descriptions.insert(0, self.placeholder)
         self.descriptions.config(fg="grey")
 
-    def get_description_value(self, event=None):
+
+    def getDescriptionValue_(self, sender):
         try:
             print("hello description value")
-            value = self.descriptions.get()
+            value = str(self.project_field.stringValue())
             if value == self.placeholder:
                 value = ""
-            # Only update if the new value is different from the current description
+
             if value != self.description:
                 self.description = value
 
                 if self.description and self.is_timer_running:
-                    # self.is_timer_running = False
                     self.restartTimer()
-                # Move focus to root window to avoid blinking cursor
+
                 if self.description:
-                    self.descriptions.delete(0, tk.END)  # Clear the entry widget
-                    self.descriptions.insert(0, self.description)
-                # threading.Thread(target=self.updateProject).start()
+                    self.project_field.setStringValue_(self.description)
+
                 self.updateProject()
 
-                print(value)  # or process the value as needed
-                
-            self.frame.focus_set()
+                print(value)
+
+            # ✅ Only reset first responder if window is active
+            if self.window and self.window.isVisible():
+                self.window.makeFirstResponder_(None)
+
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An error occurred in getDescriptionValue_: {e}")
             return None
+
+    
+
 
     def on_focus_in(self, event):
         print("Focus in event triggered")  # Debugging statement
@@ -1153,35 +1351,35 @@ class GUIApp:
 
     def user_Data(self):
         try:
-            # Load user token from a stored file
-            data_path = os.path.join(self.get_app_dir(), "data.pkl") 
+            # Use the updated macOS-safe directory
+            data_path = os.path.join(Path.home(), "Library", "Application Support", "SStrack", "data.pkl")
+
             if os.path.isfile(data_path):
                 with open(data_path, "rb") as f:
                     stored_data = pickle.load(f)
                     self.token = stored_data
+            else:
+                print("data.pkl not found in Application Support.")
+                return "N/A"
+
             # Decode the Base64-encoded parts of the token
             header, payload, signature = self.token.split(".")
-            # decoded_header = base64.urlsafe_b64decode(
-            #     header + '==').decode('utf-8')
             decoded_payload = base64.urlsafe_b64decode(payload + "==").decode("utf-8")
             self.user_info = json.loads(decoded_payload)
-            self.name = self.user_info["name"]
-            nameLength = len(self.name)
-            # Format name based on length
-            if nameLength > 15:
-                self.name = (
-                    self.name[:12] + "..."
-                )  # Take the first 16 characters and add "..."
-            else:
-                self.name = self.name  # Use the full name if it's 19 characters or less
+            self.name = self.user_info.get("name", "N/A")
 
-            self.company = self.user_info["company"]
-            self.user_id = self.user_info["_id"]
+            # Format name
+            if len(self.name) > 15:
+                self.name = self.name[:12] + "..."
+            else:
+                self.name = self.name
+
+            self.company = self.user_info.get("company", "N/A")
+            self.user_id = self.user_info.get("_id", "N/A")
+
         except Exception as e:
             print(f"An error occurred: {e}")
             return "N/A"
-
-
 
 
 
@@ -1273,255 +1471,81 @@ class GUIApp:
 
         # Make sure focus stays on the settings window
         settings_window.grab_set()
-
-    def open_settings(self):
-        # Resize the icon to a smaller size
-        self.settings_icon, _ = self.resize_image(self.resource_path("images/logoTray.png"), 20, 20, 10)
-
-        # Create a new Toplevel window for the popup
-        settings_popup = tk.Toplevel(self.root)
-        settings_popup.title("Settings")
-        settings_popup.geometry("700x340")
-        settings_popup.configure(bg="#F0F0F0")
-        settings_popup.overrideredirect(True)
-
-        # Get the current window's position
-        x = self.root.winfo_x()
-        y = self.root.winfo_y()
-        settings_popup.geometry(f"+{x}+{y}")
-
-        # Make the popup window movable
-        def start_move(event):
-            settings_popup.x = event.x
-            settings_popup.y = event.y
-
-        def stop_move(event):
-            settings_popup.x = None
-            settings_popup.y = None
-
-        def on_motion(event):
-            dx = event.x - settings_popup.x
-            dy = event.y - settings_popup.y
-            settings_popup.geometry(
-                f"+{settings_popup.winfo_x() + dx}+{settings_popup.winfo_y() + dy}"
-            )
-
-        settings_popup.bind("<Button-1>", start_move)
-        settings_popup.bind("<ButtonRelease-1>", stop_move)
-        settings_popup.bind("<B1-Motion>", on_motion)
-
-        # Header section with title, icon, and close (X) button
-        header_frame = tk.Frame(settings_popup, bg="#FFFFFF")
-        header_frame.grid(row=0, column=0, columnspan=4, sticky="ew")
-
-        # Set row height for the header frame (use a smaller value)
-        settings_popup.grid_rowconfigure(0, minsize=30)  # Adjust the height as needed
-
-        # Load the resized icon
-        icon_label = tk.Label(header_frame, image=self.settings_icon, bg="#FFFFFF")
-        icon_label.grid(row=0, column=0, padx=(5, 0), sticky="w")  # Reduced padding
-
-        # Title label with smaller font
-        title_label = tk.Label(
-            header_frame, text="Settings", font=("Arial", 10), bg="white"
+    
+    
+        
+    @objc.typedSelector(b"v@:@")
+    def on_settings_click(self, sender):
+        print("Settings button clicked (PyObjC)")
+    
+        # Create a new popup window
+        self.settings_window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+            NSMakeRect(200, 200, 700, 340),
+            15,  # Titled, Closable
+            2,
+            False
         )
-        title_label.grid(row=0, column=1, padx=(2, 5), sticky="w")  # Reduced padding
+        self.settings_window.setTitle_("Settings")
+        self.settings_window.setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0))
+        self.settings_window.makeKeyAndOrderFront_(None)
+    
+        settings_content = self.settings_window.contentView()
+    
+        # --- Settings Title ---
+        settings_title = NSTextField.alloc().initWithFrame_(NSMakeRect(20, 300, 300, 30))
+        settings_title.setStringValue_("Settings")
+        settings_title.setFont_(NSFont.boldSystemFontOfSize_(20))
+        settings_title.setBezeled_(False)
+        settings_title.setDrawsBackground_(False)
+        settings_title.setEditable_(False)
+        settings_title.setSelectable_(False)
+        settings_title.setTextColor_(NSColor.whiteColor())
+        settings_content.addSubview_(settings_title)
+    
+        # --- Close Button ---
+        self.close_button = NSButton.alloc().initWithFrame_(NSMakeRect(660, 305, 20, 20))
+        self.close_button.setTitle_("x")
+        self.close_button.setFont_(NSFont.boldSystemFontOfSize_(14))
+        self.close_button.setBezelStyle_(0)
+        self.close_button.setBordered_(False)
+        self.close_button.setWantsLayer_(True)
+        self.close_button.layer().setBackgroundColor_(NSColor.whiteColor().CGColor())
+        self.close_button.setTarget_(self)
+        self.close_button.setAction_("close_settings:")
+        settings_content.addSubview_(self.close_button)
+    
+        # --- Static Labels ---
+        fields = [
+            ("Launch on Startup", 250),
+            ("Auto-start Tracking", 220),
+            ("Screenshots:", 180),
+            ("Auto-pause:", 150),
+            ("Weekly limit:", 120),
+            ("Allow Offline Time:", 90),
+            ("Activity Level Tracking:", 60),
+            ("App & URL Tracking:", 30)
+        ]
+    
+        for text, y in fields:
+            label = NSTextField.alloc().initWithFrame_(NSMakeRect(30, y, 250, 24))
+            label.setStringValue_(text)
+            label.setFont_(NSFont.systemFontOfSize_(12))
+            label.setBezeled_(False)
+            label.setDrawsBackground_(False)
+            label.setEditable_(False)
+            label.setSelectable_(False)
+            label.setTextColor_(NSColor.whiteColor())
+            settings_content.addSubview_(label)
+    
 
-        # Close button with smaller font
-        close_button = tk.Button(
-            header_frame,
-            text="x",
-            font=("Arial", 12, "bold"),
-            bg="white",
-            fg="black",
-            relief="flat",
-            command=settings_popup.destroy,
-        )
-        close_button.grid(row=0, column=2, padx=5, sticky="e")  # Reduced padding
 
-        # Adjust the column weights for proper alignment
-        header_frame.grid_columnconfigure(0, weight=0)  # Icon column doesn't expand
-        header_frame.grid_columnconfigure(1, weight=1)  # Title column expands
-        header_frame.grid_columnconfigure(2, weight=0)  # Button column doesn't expand
-
-        # Hover effect for the close button
-        def on_enter(event):
-            close_button["background"] = "#F44336"  # Red on hover
-            close_button["foreground"] = "white"
-
-        def on_leave(event):
-            close_button["background"] = "white"  # White when not hovered
-            close_button["foreground"] = "black"
-
-        close_button.bind("<Enter>", on_enter)
-        close_button.bind("<Leave>", on_leave)
-
-        # Hover effect for the close button
-        def on_enter(event):
-            close_button["background"] = "#F44336"  # Red on hover
-            close_button["foreground"] = "white"
-
-        def on_leave(event):
-            close_button["background"] = "white"  # White when not hovered
-            close_button["foreground"] = "black"
-
-        close_button.bind("<Enter>", on_enter)
-        close_button.bind("<Leave>", on_leave)
-
-        # Hover effect for the close button
-        def on_enter(event):
-            close_button["background"] = "#F44336"  # Red on hover
-            close_button["foreground"] = "white"
-
-        def on_leave(event):
-            close_button["background"] = "white"  # White when not hovered
-            close_button["foreground"] = "black"
-
-        close_button.bind("<Enter>", on_enter)
-        close_button.bind("<Leave>", on_leave)
-
-        # Add padding and layout styling
-        title_font = ("Arial", 10, "bold")
-        label_font = ("Arial", 9)
-
-        # Configure the grid layout to make it responsive
-        settings_popup.columnconfigure(0, weight=1)
-        settings_popup.columnconfigure(1, weight=1)
-        settings_popup.columnconfigure(2, weight=1)
-        settings_popup.columnconfigure(3, weight=1)
-
-        # Team Settings Section
-        # Team Settings Section
-        # Replace the 'pack' call with 'grid'
-        # Team Settings Section
-        # User Settings Section
-        tk.Label(
-            settings_popup, text="User Settings", font=title_font, bg="#F0F0F0"
-        ).grid(row=1, column=0, columnspan=4, padx=20, pady=10, sticky="w")
-
-        # Checkboxes for launch and auto-start functionality
-        tk.Checkbutton(
-            settings_popup,
-            text="Launch SSTRACK when I start Windows",
-            variable=self.launch_monitor_var,
-            bg="#F0F0F0",
-        ).grid(row=2, column=0, columnspan=2, padx=10, pady=5, sticky="w")
-        tk.Checkbutton(
-            settings_popup,
-            text="Automatically start tracking when I launch SSTRACK",
-            variable=self.auto_start_var,
-            bg="#F0F0F0",
-        ).grid(row=3, column=0, columnspan=2, padx=10, pady=5, sticky="w")
-
-        # Add traces to detect checkbox changes
-        self.launch_monitor_var.trace(
-            "w", lambda *args: self.on_launch_monitor_change()
-        )
-        self.auto_start_var.trace("w", lambda *args: self.on_auto_start_change())
-
-        # Team Settings Section
-        tk.Label(
-            settings_popup,
-            text="Team settings (set by company manager)",
-            font=title_font,
-            bg="#F0F0F0",
-        ).grid(row=4, column=0, columnspan=4, padx=20, pady=10, sticky="w")
-
-        # Screenshots
-        tk.Label(
-            settings_popup,
-            text="Screenshots:",
-            font=label_font,
-            bg="#F0F0F0",
-            anchor="e",
-        ).grid(row=5, column=0, padx=5, pady=2, sticky="w")
-        tk.Label(
-            settings_popup,
-            text=self.ssperhr,
-            font=label_font,
-            fg="#4CAF50",
-            bg="#F0F0F0",
-            anchor="w",
-        ).grid(row=5, column=1, padx=5, pady=2, sticky="w")
-
-        # Auto-pause tracking
-        tk.Label(
-            settings_popup, text="Auto-pause tracking:", font=label_font, bg="#F0F0F0"
-        ).grid(row=6, column=0, padx=5, pady=2, sticky="w")
-        tk.Label(
-            settings_popup,
-            text=str(self.autoPauseTrackingAfter) + " min",
-            font=label_font,
-            fg="#4CAF50",
-            bg="#F0F0F0",
-        ).grid(row=6, column=1, padx=5, pady=2, sticky="w")
-
-        # Weekly time limit
-        tk.Label(
-            settings_popup, text="Weekly time limit:", font=label_font, bg="#F0F0F0"
-        ).grid(row=7, column=0, padx=5, pady=2, sticky="w")
-        tk.Label(
-            settings_popup,
-            text=self.weeklyTimeLimit,
-            font=label_font,
-            fg="#4CAF50",
-            bg="#F0F0F0",
-        ).grid(row=7, column=1, padx=5, pady=2, sticky="w")
-
-        # Allow adding offline time
-        tk.Label(
-            settings_popup,
-            text="Allow adding offline time:",
-            font=label_font,
-            bg="#F0F0F0",
-        ).grid(row=5, column=2, padx=5, pady=2, sticky="w")
-        tk.Label(
-            settings_popup,
-            text="Yes" if self.allowAddingOfflineTime else "No",
-            font=label_font,
-            fg="#4CAF50",
-            bg="#F0F0F0",
-        ).grid(row=5, column=3, padx=5, pady=2, sticky="w")
-
-        # Activity Level tracking
-        tk.Label(
-            settings_popup,
-            text="Activity Level tracking:",
-            font=label_font,
-            bg="#F0F0F0",
-        ).grid(row=6, column=2, padx=5, pady=2, sticky="w")
-        tk.Label(
-            settings_popup, text="Yes", font=label_font, fg="#4CAF50", bg="#F0F0F0"
-        ).grid(row=6, column=3, padx=5, pady=2, sticky="w")
-
-        # App & URL tracking
-        tk.Label(
-            settings_popup, text="App & URL tracking:", font=label_font, bg="#F0F0F0"
-        ).grid(row=7, column=2, padx=5, pady=2, sticky="w")
-        tk.Label(
-            settings_popup, text="Yes", font=label_font, fg="#4CAF50", bg="#F0F0F0"
-        ).grid(row=7, column=3, padx=5, pady=2, sticky="w")
-
-        # Add traces to detect checkbox changes
-        # self.launch_monitor_var.trace("w", lambda *args: self.on_launch_monitor_change())
-        # self.auto_start_var.trace("w", lambda *args: self.on_auto_start_change())
-
-        # Add buttons at the bottom, with responsiveness
-        # save_button = tk.Button(settings_popup, text="Save", width=12, height=1, bg="#4CAF50", fg="white", font=("Arial", 10, "bold"), relief="flat", command=self.save_settings)
-        # cancel_button = tk.Button(settings_popup, text="Cancel", width=12, height=1, bg="#F44336", fg="white", font=("Arial", 10, "bold"), relief="flat", command=settings_popup.destroy)
-
-        # save_button.grid(row=7, column=2, pady=20, padx=20, sticky="e")
-        # cancel_button.grid(row=7, column=3, pady=20, padx=20, sticky="w")
-
-        # Make sure focus stays on the popup window
-        settings_popup.grab_set()
 
     def open_settingsMy(self):
         # Create a new Toplevel window for settings
         settings_window = tk.Toplevel(self.root)
         settings_window.title("Settings")
         settings_window.geometry("700x340")  # Set initial window size
-        settings_window.configure(bg="#F0F0F0")  # Light background color
+        settings_window.configure(bg="#0E4772")  # Light background color
 
         # Add padding and layout styling
         title_font = ("Arial", 10, "bold")
@@ -1538,33 +1562,33 @@ class GUIApp:
             settings_window,
             text="Team settings (set by company manager)",
             font=title_font,
-            bg="#F0F0F0",
+            bg="#0E4772",
         ).grid(row=0, column=0, columnspan=4, padx=20, pady=10, sticky="w")
 
         # First column labels and values
         tk.Label(
-            settings_window, text="Screenshots:", font=label_font, bg="#F0F0F0"
+            settings_window, text="Screenshots:", font=label_font, bg="#0E4772"
         ).grid(row=1, column=0, padx=10, pady=5, sticky="w")
         tk.Label(
-            settings_window, text="30/hr", font=label_font, fg="#4CAF50", bg="#F0F0F0"
+            settings_window, text="30/hr", font=label_font, fg="#4CAF50", bg="#0E4772"
         ).grid(row=1, column=1, padx=10, pady=5, sticky="w")
 
         tk.Label(
-            settings_window, text="Auto-pause tracking:", font=label_font, bg="#F0F0F0"
+            settings_window, text="Auto-pause tracking:", font=label_font, bg="#0E4772"
         ).grid(row=2, column=0, padx=10, pady=5, sticky="w")
         tk.Label(
-            settings_window, text="40 min", font=label_font, fg="#4CAF50", bg="#F0F0F0"
+            settings_window, text="40 min", font=label_font, fg="#4CAF50", bg="#0E4772"
         ).grid(row=2, column=1, padx=10, pady=5, sticky="w")
 
         tk.Label(
-            settings_window, text="Weekly time limit:", font=label_font, bg="#F0F0F0"
+            settings_window, text="Weekly time limit:", font=label_font, bg="#0E4772"
         ).grid(row=3, column=0, padx=10, pady=5, sticky="w")
         tk.Label(
             settings_window,
             text="No limit",
             font=label_font,
             fg="#4CAF50",
-            bg="#F0F0F0",
+            bg="#0E4772",
         ).grid(row=3, column=1, padx=10, pady=5, sticky="w")
 
         # Second column labels and values
@@ -1572,27 +1596,27 @@ class GUIApp:
             settings_window,
             text="Allow adding offline time:",
             font=label_font,
-            bg="#F0F0F0",
+            bg="#0E4772",
         ).grid(row=1, column=2, padx=10, pady=5, sticky="w")
         tk.Label(
-            settings_window, text="No", font=label_font, fg="#F44336", bg="#F0F0F0"
+            settings_window, text="No", font=label_font, fg="#F44336", bg="#0E4772"
         ).grid(row=1, column=3, padx=10, pady=5, sticky="w")
 
         tk.Label(
             settings_window,
             text="Activity Level tracking:",
             font=label_font,
-            bg="#F0F0F0",
+            bg="#0E4772",
         ).grid(row=2, column=2, padx=10, pady=5, sticky="w")
         tk.Label(
-            settings_window, text="Yes", font=label_font, fg="#4CAF50", bg="#F0F0F0"
+            settings_window, text="Yes", font=label_font, fg="#4CAF50", bg="#0E4772"
         ).grid(row=2, column=3, padx=10, pady=5, sticky="w")
 
         tk.Label(
-            settings_window, text="App & URL tracking:", font=label_font, bg="#F0F0F0"
+            settings_window, text="App & URL tracking:", font=label_font, bg="#0E4772"
         ).grid(row=3, column=2, padx=10, pady=5, sticky="w")
         tk.Label(
-            settings_window, text="Yes", font=label_font, fg="#4CAF50", bg="#F0F0F0"
+            settings_window, text="Yes", font=label_font, fg="#4CAF50", bg="#0E4772"
         ).grid(row=3, column=3, padx=10, pady=5, sticky="w")
 
         # Add buttons at the bottom, with responsiveness
@@ -1641,28 +1665,7 @@ class GUIApp:
         draw.rectangle((0, 0, width, height), outline=(0, 0, 0), fill=(255, 255, 0))
         return image
 
-    # def on_quit(self, icon, item):
-    #     try:
-    #         # Check if the timer is running
-    #         if self.is_timer_running:
-    #             confirm = messagebox.askyesno("App Closing", "Are you sure you want to stop the SSTRACK?")
-    #             if confirm:
-    #                 self.click_pause_button()  # Pause tracking before exiting
-    #                 self.stop_process()  # Separate method to handle process termination
-    #         else:
-    #             self.stop_process()  # Directly stop the process if timer is not running
 
-    #         # Safely remove the tray icon
-    #         if self.icon:
-    #             print("Removing tray icon...")
-    #             self.icon.stop()
-    #             print("Tray icon removed successfully.")
-
-    #         # Close the Tkinter window
-    #         self.root.destroy()
-
-    #     except Exception as e:
-    #         print(f"An error occurred during quitting: {e}")
 
     def stop_process(self):
         """Terminate the SSTRACK process."""
@@ -1673,7 +1676,7 @@ class GUIApp:
         except Exception as e:
             print(f"Error while terminating SSTRACK process: {e}")
 
-    def setup(self, icon):
+    def setup_tray_icon(self, icon):
         icon.visible = True
 
     def show_window(self):
@@ -1703,39 +1706,7 @@ class GUIApp:
             print(f"An error occurred: {e}")
             return "N/A"
 
-    # def refresh_tray_icon(self):
-    #     if self.icon:
-    #         # Stop the current icon
-    #         self.icon.stop()
-    #         time.sleep(0.1)  # Small delay to ensure proper cleanup
-    #         # Restart the tray icon
-    #         self.run_tray()
 
-
-    # def run_tray(self):
-       
-    #     # Set up the tray icon with a click event to show the window
-    #     self.icon = Icon(
-    #         "my_app",
-    #         self.icon_for_tray,
-    #         "SSTRACK",
-    #         menu=Menu(
-    #             MenuItem("Show", self.show_window),  # Show window menu item
-    #             MenuItem("Quit", self.on_quit),  # Quit menu item
-    #         ),
-    #     )
-
-    #     # Bind the click event to the tray icon to show the window
-    #     # self.icon._icon.visible = True  # Ensure the icon is visible
-
-    #     # Run the system tray in a separate thread
-    #     self.icon.run()
-    #     self.refresh_tray_icon()
-    #     # threading.Thread(target=self.icon.run, daemon=True).start()
-
-    # def start_tray(self):
-    #     """Start the tray in a separate thread"""
-    #     threading.Thread(target=self.run_tray, daemon=True).start()
 
     def screenshots_data(self):
         try:
@@ -2092,7 +2063,7 @@ class GUIApp:
 
                 time.sleep(1)  # Blink every second
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An error occurred update_time: {e}")
             return "N/A"
 
     def update_timenew(self):
@@ -2216,6 +2187,9 @@ class GUIApp:
             print("hello fetch data")
             if not self.calledImmediate:
                 with self.fetch_data_lock:
+                    if not self.token:
+                        print("❗Token not found. You must login first.")
+                        return None
                     api_url = "https://myuniversallanguages.com:9093/api/v1"
 
                     headers = {
@@ -2279,12 +2253,13 @@ class GUIApp:
             return None
             # self.root.after(300000, self.get_data)
 
+
     def hoursLength(self):
         # self.hours = '2h'
         # self.minutes = '22m'
         # Set the text of the labels accordingly
-        self.hour_label.config(text=self.hours)
-        self.minute_label.config(text=self.minutes)
+        self.hour_label.setStringValue_(str(self.hours))
+        self.minute_label.setStringValue_(str(self.minutes))
 
         # Place the labels initially at arbitrary positions
         # self.hour_label.place(x=320, y=47)
@@ -2339,7 +2314,7 @@ class GUIApp:
 
             try:
                 response = requests.get(
-                    f"{api_url}/timetrack/updatedFile", headers=headers
+                    f"{api_url}/timetrack/getSiliconFile", headers=headers
                 )
                 if response.ok:
                     json_data = response.json()
@@ -2360,12 +2335,12 @@ class GUIApp:
     def download_new_version(self):
         response = requests.get(self.url)
         if response.status_code == 200:
-            if os.path.exists("SSTRACKSetup.exe"):
-                os.remove("SSTRACKSetup.exe")
-            with open("SSTRACKSetup.exe", "wb") as new_file:
+            if os.path.exists("SSTRACKAppleSetup1.1.19.dmg"):
+                os.remove("SSTRACKAppleSetup1.1.19.dmg")
+            with open("SSTRACKAppleSetup1.1.19.dmg", "wb") as new_file:
                 new_file.write(response.content)
                 self.download = True
-            print("SSTRACKSetup.exe downloaded successfully.")
+            print("SSTRACKAppleSetup1.1.19.dmg downloaded successfully.")
 
             try:
                 os.remove(GUIApp.get_data_file_path("data.pkl"))
@@ -2380,10 +2355,11 @@ class GUIApp:
                 pass
 
             # Restart the main.py script as a new process
-            subprocess.Popen(["SSTRACKSetup.exe"])
+            subprocess.Popen(["open", "SSTRACKAppleSetup1.1.19.dmg"])
+
 
         else:
-            print("Failed to download SSTRACKSetup.exe.")
+            print("Failed to download SSTRACKAppleSetup1.1.19.dmg.")
 
     def show_loading_message(self):
         self.loading_popup = tk.Toplevel(self.root)
@@ -2510,7 +2486,7 @@ class GUIApp:
             print("play button")
             # Change the icon to indicate the running state
             # self.root.iconphoto(True, self.official_icon)
-            self.root.wm_iconbitmap(self.resource_path("images/animatedlogo.ico"))
+            # self.root.wm_iconbitmap(self.resource_path("images/animatedlogo.ico"))
             # self.set_icon("images/animatedlogo.ico")
             if self.updated:
                 confirmation = messagebox.askyesno(
@@ -2529,32 +2505,17 @@ class GUIApp:
                 if not self.updated:
                     self.exact_time = datetime.datetime.now(pytz.UTC)
                     self.playTime = datetime.datetime.now(pytz.UTC)
-                    self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+                    # self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
                     if not self.is_timer_running:
                         self.is_timer_running = True
                         self.total = 0
-                        # Re-enable the break button
-                        self.break_button_enabled = True
-                        self.break_button.config(
-                            text="Break",
-                            bg="#E8F4FC",  # Initial background color
-                            fg="#7094B0",  # White text when break ends
-                        )
+                       
                         threading.Thread(target=self.update_time).start()
 
                         # self.play_button.config(state=tk.DISABLED)
                         # self.pause_button.config(state=tk.NORMAL)
                         # Change play button image to play_icon_grey
-                        self.canvas.itemconfig(self.play_button, image=self.play_icon_grey)
-
-                        # Change pause button image to pause_icon
-                        self.canvas.itemconfig(self.pause_button, image=self.pause_icon)
-                        self.canvas.lift(self.pause_button)
-                        # Unbind the click event for the play button to simulate disabling it
-                        self.canvas.tag_unbind(self.play_button, "<Button-1>")
-                        self.canvas.tag_bind(
-                            self.pause_button, "<Button-1>", self.click_pause_button
-                        )
+                      
 
                         # Other logic for starting the timer or performing actions goes here, 40, 10)  # Move pause button up to play position (e.g., x=40, y=5)
 
@@ -2611,10 +2572,9 @@ class GUIApp:
                                 pickle.dump(unique_id, f)
 
                             print("Tracking start data saved successfully.")
-                            self.minimize_window()
+                            # self.minimize_window()
                         
-                            # Create a notifier object
-                            # message = 'no note'
+                        
                             message = ""
                             if self.description:
                                 message = self.description
@@ -2627,26 +2587,11 @@ class GUIApp:
                             if self.breakActive:
                                 self.popActive=True
                                 self.breakActive = False
-                                # Display a notification with an icon
-                                # Notifier.notify(
-                                #     title="SSTRACK started",
-                                #     message="Your break has been stopped. SSTRACK is started.",
-                                #     timeout=3,  # Notification disappears after 3 seconds
-                                #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-                                # )
+                               
                                 os.system('terminal-notifier -title "SSTRACK started" -message "Your break has been stopped. SSTRACK is started." -appIcon "images/animatedlogo.png"')
-                                # Your break has been stopped. SSTRACK is started.
+                               
                             else:
-                            # self.breakExecution()
-                            # self.start_Timer()
-     
-                                # Display a notification with an icon
-                                # Notifier.notify(
-                                #     title="SSTRACK started",
-                                #     message=message,
-                                #     timeout=3,  # Notification disappears after 3 seconds
-                                #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-                                # ) 
+                           
                                 os.system('terminal-notifier -title "SSTRACK started" -message "SSTRACK started" -appIcon "images/animatedlogo.png"')
                             # Start the timer in a separate thread
                             threading.Thread(target=self.setUpBreak).start()
@@ -2909,59 +2854,11 @@ class GUIApp:
             # Start the timer in a separate thread
             self.start_Timer()
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An error occurred restartTimer: {e}")
             return "N/A"
 
 
-    # def click_break_button(self, event=None):
-    #     if not self.break_button_enabled:
-    #         self.break_button_enabled = True
-    #         print("Break button is disabled. Click ignored.")
-    #         self.setUpBreak()
-    #         return
-       
-    #     if self.breakFound and self.parse_remaining_break_time(self.BreakTime) > 1:
-
-    #         try:
-            
-    #             self.breakActive = True
-    #             self.breakStartedOn = datetime.datetime.now(pytz.UTC)
-    
-                
-    #             # Disable the break button
-    #             self.break_button_enabled = False
-    #             # Display a notification with an icon
-    #             notification.notify(
-    #                 title="Break started",
-    #                 message="Your break has started",
-    #                 timeout=3,
-    #                 app_icon="images/animatedlogo.ico"
-    #             )
-    #             self.breakId = str(uuid.uuid4())
-                
-    #             # Start `startBreakTime` in a separate thread
-    #             threading.Thread(target=self.startBreakTime, daemon=True).start()
-    #         except Exception as e:
-    #             print(f"Error starting break time: {e}")
-    #     elif self.breakFound and self.parse_remaining_break_time(self.BreakTime) < 1:
-    #         # Display a notification with an icon
-    #             notification.notify(
-    #                 title="Break Time",
-    #                 message="The assigned break time has already been utilized",
-    #                 timeout=3,
-    #                 app_icon="images/animatedlogo.ico"
-    #             )
-
-    #     elif not self.breakFound:
-    #         # Display a notification with an icon
-    #             notification.notify(
-    #                 title="Break Time",
-    #                 message="No break time has been assigned by the company.",
-    #                 timeout=3,
-    #                 app_icon="images/animatedlogo.ico"
-    #             )
-
-
+   
 
     def can_display_notification(self):
         current_time = time.time()
@@ -3057,14 +2954,17 @@ class GUIApp:
             print(f"An error occurred: {e}")
             return "N/A"
 
-    def logout(self):
-        # Stop the timer if running
-        if self.is_timer_running:
-            self.click_pause_button()
+    @objc.typedSelector(b"v@:@")
+    def logout_(self, sender):
+        print("🚪 Logout button clicked")
 
-        # Clear the stored data
+        # --- 1. Stop timer if running ---
+        if hasattr(self, "is_timer_running") and self.is_timer_running:
+            self.pauseButtonClicked_(None)
+
+        # --- 2. Remove session files ---
         try:
-            os.remove("data.pkl")
+            os.remove(GUIApp.get_data_file_path("data.pkl"))
         except FileNotFoundError:
             pass
 
@@ -3073,12 +2973,28 @@ class GUIApp:
         except FileNotFoundError:
             pass
 
-        # Destroy the Tkinter root window
-        # os.system("taskkill /f /im SSTRACK.exe")
-        self.root.destroy()
-        # Restart the main.py script as a new process
-        subprocess.Popen([self.python_exe, "main.py"])
+        # --- 3. Close current window ---
+        if hasattr(self, "window"):
+            self.window.close()
 
+        # --- 4. Relaunch login.py ---
+        try:
+            python_executable = sys.executable  # Current venv Python path
+            script_dir = os.path.dirname(os.path.abspath(__file__))  # Current directory
+            login_script_path = os.path.join(script_dir, "login.py")  # Full path to login.py
+
+            # Launch login.py
+            subprocess.Popen([python_executable, login_script_path])
+
+            print("🔄 Relaunching login window...")
+
+            # --- 5. Quit current app safely ---
+            NSApplication.sharedApplication().terminate_(self)
+
+        except Exception as e:
+            print("❌ Failed to relaunch login:", e)
+
+    
     def handle_sleep_mode(self):
         """Continuously monitors system state and triggers sleep mode or break time."""
         last_break_triggered_time = None  # Track the last time a break was triggered
@@ -3831,11 +3747,11 @@ class GUIApp:
             return None
 
 def main():
-    root = tk.Tk()
-    app = GUIApp(root)
-    # Bind the protocol method to the window closing event
-    root.protocol("WM_DELETE_WINDOW", app.on_closing)
-    root.mainloop()
+    app = NSApplication.sharedApplication()
+    delegate = GUIApp.alloc().init()
+    app.setDelegate_(delegate)
+    NSRunningApplication.currentApplication().activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
+    app.run()
 
 
 if __name__ == "__main__":

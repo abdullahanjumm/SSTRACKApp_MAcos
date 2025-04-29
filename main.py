@@ -1,75 +1,39 @@
-from tkinter import Tk
 import os
 import pickle
-import platform
 import sys
-import time
-import subprocess
+from pathlib import Path
 
-# Conditional imports for Windows-specific modules
-if platform.system() == "Windows":
-    import win32event
-    import win32api
-    import win32gui
-    import winerror
-    import win32process
+from Cocoa import NSApplication, NSRunningApplication, NSApplicationActivateIgnoringOtherApps
+from PyObjCTools.AppHelper import runEventLoop
 
 from login import LoginApp
-from customized import GUIApp
+from customized import GUIApp  # Must be PyObjC-based
 
-WINDOW_TITLE = "SStrack"
-MUTEX_NAME = "myapp_InstanceMutex"
 
-def get_app_dir():
-    """Get the directory where the executable is running."""
-    if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)  # Running as an executable
-    return os.path.dirname(os.path.abspath(__file__)) 
-def bring_window_to_foreground():
-    """Bring the existing application window to the foreground (Windows only)."""
-    if platform.system() == "Windows":
-        def enum_windows_callback(hwnd, pid):
-            if win32gui.IsWindowVisible(hwnd) and win32process.GetWindowThreadProcessId(hwnd)[1] == pid:
-                win32gui.SetForegroundWindow(hwnd)
-                print("Already running")
-                return False  # Stop enumeration once the window is found
-            return True
+def get_user_data_dir():
+    path = os.path.join(Path.home(), "Library", "Application Support", "SStrack")
+    os.makedirs(path, exist_ok=True)
+    return path
 
-        win32gui.EnumWindows(enum_windows_callback, os.getpid())
-        time.sleep(0.1)  # Add a small delay to allow mutex release
 
 def main():
-    print("Current Working Directory:", os.getcwd())
+    app = NSApplication.sharedApplication()
+    user_data_path = os.path.join(get_user_data_dir(), "data.pkl")
 
-    # Dynamically resolve the base directory
-    BASE_DIR = get_app_dir()
-    print(f"App Directory: {BASE_DIR}")
-
-    if platform.system() == "Windows":
-        # Only create and check for the mutex on Windows
-        mutex = win32event.CreateMutex(None, False, MUTEX_NAME)
-        if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
-            bring_window_to_foreground()
-            return  # Exit the main function without attempting to release the mutex
-
-    # Start the main application
-    data_path = os.path.join(BASE_DIR, "data.pkl")
-    if os.path.exists(data_path):
-        with open(data_path, "rb") as f:
+    if os.path.exists(user_data_path):
+        with open(user_data_path, "rb") as f:
             stored_data = pickle.load(f)
-        root = Tk()
-        app = GUIApp(root)
-        root.protocol("WM_DELETE_WINDOW", app.on_closing)
-        root.mainloop()
+        # ✅ GUIApp must be a PyObjC NSObject subclass with applicationDidFinishLaunching_
+        gui_delegate = GUIApp.alloc().init()
+        app.setDelegate_(gui_delegate)
     else:
-        root = Tk()
-        login_app = LoginApp(root)
-        root.mainloop()
+        # ✅ LoginApp must also be a PyObjC NSObject subclass with applicationDidFinishLaunching_
+        login_delegate = LoginApp.alloc().init()
+        app.setDelegate_(login_delegate)
 
-    if platform.system() == "Windows":
-        # Release the mutex if this instance created it
-        win32event.ReleaseMutex(mutex)
-        win32api.CloseHandle(mutex)
+    NSRunningApplication.currentApplication().activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
+    app.run()
+
 
 if __name__ == "__main__":
     main()
