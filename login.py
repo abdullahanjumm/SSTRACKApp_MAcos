@@ -5,18 +5,39 @@ from Cocoa import (
     NSMakeRect, NSImageView, NSImage
 )
 from Foundation import NSObject
-from AppKit import NSAlert
+from AppKit import NSAlert, NSMenu, NSMenuItem, NSApp
 import requests
 import pickle
 import os
 import sys
-import subprocess
 import webbrowser
 from pathlib import Path
+from customized import GUIApp
 
 
 class LoginApp(NSObject):
     def applicationDidFinishLaunching_(self, notification):
+        def setup_main_menu(app_name="SStrack"):
+            main_menu = NSMenu.alloc().init()
+
+            app_menu_item = NSMenuItem.alloc().init()
+            main_menu.addItem_(app_menu_item)
+            NSApp.setMainMenu_(main_menu)
+
+            app_menu = NSMenu.alloc().init()
+
+            quit_title = f"Quit {app_name}"
+            quit_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                quit_title,
+                "terminate:",  # macOS built-in selector for quitting
+                "q"
+            )
+            app_menu.addItem_(quit_item)
+
+            app_menu_item.setSubmenu_(app_menu)
+            
+           # ✅ Call the menu setup function here
+        setup_main_menu("SStrack")
         self.show_password = False  # Track if password is shown or hidden
 
         # Window setup
@@ -66,17 +87,21 @@ class LoginApp(NSObject):
         self.email_field = NSTextField.alloc().initWithFrame_(NSMakeRect(200, 230, 300, 24))
         self.email_field.setPlaceholderString_("Enter your email")
         self.email_field.setFont_(NSFont.systemFontOfSize_(14))
+        self.email_field.setEditable_(True)
+        self.email_field.setSelectable_(True)
         content_view.addSubview_(self.email_field)
 
         # Password field (secure by default)
         self.password_field = NSSecureTextField.alloc().initWithFrame_(NSMakeRect(200, 185, 300, 24))
         self.password_field.setPlaceholderString_("Enter your password")
         self.password_field.setFont_(NSFont.systemFontOfSize_(14))
+        self.password_field.setEditable_(True)
+        self.password_field.setSelectable_(True)
         content_view.addSubview_(self.password_field)
 
         # Show Password Eye Icon Button
         self.toggle_password_button = NSButton.alloc().initWithFrame_(NSMakeRect(470, 165, 30, 24))
-        self.toggle_password_button.setTitle_("👁️")  # Start with eye open
+        self.toggle_password_button.setTitle_("👁️")
         self.toggle_password_button.setBezelStyle_(1)
         self.toggle_password_button.setBordered_(False)
         self.toggle_password_button.setTarget_(self)
@@ -105,43 +130,41 @@ class LoginApp(NSObject):
         content_view = self.window.contentView()
         old_password = str(self.password_field.stringValue())
         frame = self.password_field.frame()
-    
-        # Remove current password field
+
         self.password_field.removeFromSuperview()
-    
+
         if self.show_password:
-            # Switch back to Secure Text Field (hidden password)
             self.password_field = NSSecureTextField.alloc().initWithFrame_(frame)
-            self.toggle_password_button.setTitle_("👁️")  # Eye Open
+            self.toggle_password_button.setTitle_("👁️")
         else:
-            # Switch to Plain Text Field (visible password)
             self.password_field = NSTextField.alloc().initWithFrame_(frame)
-            self.toggle_password_button.setTitle_("🙈")  # Eye Closed
-    
+            self.toggle_password_button.setTitle_("🙈")
+
         self.password_field.setStringValue_(old_password)
         self.password_field.setFont_(NSFont.systemFontOfSize_(14))
+        self.password_field.setEditable_(True)
+        self.password_field.setSelectable_(True)
         content_view.addSubview_(self.password_field)
-    
+        self.window.makeFirstResponder_(self.password_field)
+
         self.show_password = not self.show_password
-    
-    
-    
+
     def get_user_data_dir(self):
         path = os.path.join(Path.home(), "Library", "Application Support", "SStrack")
         os.makedirs(path, exist_ok=True)
         return path
 
     def resource_path(self, relative_path):
-        if getattr(sys, 'frozen', False):
-            base_path = os.path.dirname(sys.executable)
-        else:
-            base_path = os.path.abspath(".")
-        return os.path.join(base_path, relative_path)
+        if getattr(sys, '_MEIPASS', False):
+            return os.path.join(sys._MEIPASS, relative_path)
+        return os.path.join(os.path.abspath("."), relative_path)
 
+  
     def openForgetPassword_(self, sender):
         webbrowser.open("https://www.sstrack.io/forget-password", new=2)
 
     def performLogin_(self, sender):
+        print("🚪 login button clicked")
         email = str(self.email_field.stringValue())
         password = str(self.password_field.stringValue())
         api_url = "https://myuniversallanguages.com:9093/api/v1/signin"
@@ -155,34 +178,37 @@ class LoginApp(NSObject):
             if "message" in data:
                 self._show_error(data["message"])
             else:
-                # Save token and credentials
                 data_dir = self.get_user_data_dir()
-                with open(os.path.join(data_dir, "data.pkl"), "wb") as f:
+                data_path = os.path.join(data_dir, "data.pkl")
+                credentials_path = os.path.join(data_dir, "new_data.pkl")
+
+                with open(data_path, "wb") as f:
                     pickle.dump(data["token"], f)
-                with open(os.path.join(data_dir, "new_data.pkl"), "wb") as f:
+                with open(credentials_path, "wb") as f:
                     pickle.dump({"email": email, "password": password}, f)
 
                 print("✅ Login successful! Opening Home screen...")
+                print(f"💾 Token saved at: {data_path}")
+                print(f"💾 Credentials saved at: {credentials_path}")
 
-                # Close Login Window
                 self.window.close()
 
-                # Launch customized.py (Home Window)
-                python_executable = sys.executable
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-                customized_script_path = os.path.join(script_dir, "customized.py")
-                subprocess.Popen([python_executable, customized_script_path])
-
-                NSApplication.sharedApplication().terminate_(self)
-
+                delegate = GUIApp.alloc().init()
+                NSApplication.sharedApplication().setDelegate_(delegate)
+                delegate.applicationDidFinishLaunching_(None)
         except requests.exceptions.RequestException:
             self._show_error("An error occurred while connecting to the server")
+
 
     def _show_error(self, message):
         alert = NSAlert.alloc().init()
         alert.setMessageText_("Error")
         alert.setInformativeText_(message)
         alert.runModal()
+    
+    def applicationShouldTerminate_(self, sender):
+        print("✅ Application is quitting via Cmd+Q")
+        return 1  # Equivalent to NSApplicationTerminateNow
 
 
 # Entry point

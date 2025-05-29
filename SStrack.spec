@@ -8,39 +8,42 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=[
-        ('images', 'images')
-        # ❌ NO more Lorem ipsum.txt
+        ('/Users/charlie/Desktop/AppIcon.icns', '.'),  # ← ensures it’s bundled
+        ('images', 'images'),
     ],
     hiddenimports=[
-        'tkinter',
-        'tkinter.messagebox',
+        'objc',
+        'AppKit',
+        'Foundation',
+        'Quartz',
         'PIL.Image',
         'PIL.ImageTk',
         'PIL.ImageGrab',
         'PIL.ImageDraw',
-        'PIL.ImageFont',
-        'pystray',
-        'plyer',
         'uuid',
         'socketio',
-        'ActivityMonitor',
         'customized',
-        'shutil',
-        'ctypes',
         'requests',
+        'pystray',
         'dateutil.parser',
         'pytz',
-        'tkinter.font'
+        'plyer',
+    
     ],
     hookspath=[],
-    runtime_hooks=[],  # Make sure pyi_rth_pkgres is NOT here
+    runtime_hooks=[],
     excludes=[
+        '_tkinter',
+        'tkinter',
+        'Tkinter',
+        'tcl',
+        'tk',
+        'tkintersupport',
+        'PIL.ImageTk',
         'pynput',
-        'win32com.client',
-        'PySimpleGUIQt',
-        'pync',
         'pygetwindow',
-        'ewmh'
+        'ewmh',
+        'win32com.client',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -60,7 +63,8 @@ exe = EXE(
     strip=False,
     upx=True,
     console=False,
-    icon='/Users/charlie/Downloads/SSTRACKApp/AppIcon.icns'
+    icon='/Users/charlie/Desktop/AppIcon.icns'
+
 )
 
 coll = COLLECT(
@@ -86,6 +90,9 @@ app = BUNDLE(
         'CFBundleIdentifier': 'com.gwapp.sstrack',
         'CFBundleVersion': '1.0.0',
         'CFBundleShortVersionString': '1.0.0',
-        'CFBundleIconFile': 'AppIcon.icns'
+        'CFBundleIconFile': 'AppIcon.icns',
+        'NSAppleEventsUsageDescription': 'SStrack needs access to detect your active application and take screenshots.',
+        'NSCameraUsageDescription': 'SStrack uses the screen to capture productivity screenshots.'
     }
+
 )

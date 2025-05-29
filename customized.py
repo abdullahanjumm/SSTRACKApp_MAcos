@@ -1,65 +1,82 @@
-from tkinter import *
-from tkinter import Toplevel
-from tkinter import messagebox
+
+
 import datetime
-from PIL import Image, ImageTk, ImageGrab, ImageDraw, ImageFont
+from PIL import Image, ImageGrab, ImageDraw, ImageFont
 import objc
+
 from Cocoa import (
     NSApplication, NSWindow, NSView, NSImageView, NSImage,
     NSButton, NSTextField, NSColor, NSFont,
     NSRunningApplication, NSApplicationActivateIgnoringOtherApps,
     NSMakeRect, NSTitledWindowMask, NSClosableWindowMask,
-    NSResizableWindowMask, NSBackingStoreBuffered,
+    NSResizableWindowMask, NSBackingStoreBuffered
 )
-# ✅ CORRECT
-from AppKit import NSMutableAttributedString, NSForegroundColorAttributeName, NSPopUpButton, NSButtonCell, NSBezierPath, NSAttributedString, NSDictionary, NSForegroundColorAttributeName
-from Quartz import CAShapeLayer, CGPathCreateMutable, CGPathAddRoundedRect, CGRectMake
+
+from AppKit import (
+    NSMutableAttributedString, NSForegroundColorAttributeName,
+    NSPopUpButton, NSButtonCell, NSBezierPath, NSAttributedString,
+    NSDictionary, NSImageScaleProportionallyUpOrDown,
+    NSImageView, NSImage, NSAlert, NSApp, NSTerminateNow, NSMenu, NSMenuItem, NSApp
+)
+
+from Quartz import (
+    CAShapeLayer, CGPathCreateMutable,
+    CGPathAddRoundedRect, CGRectMake
+)
+
 from Foundation import NSObject
+
 import pickle
+import pystray
 import base64
 import json
-import tkinter as tk
 import requests
 import time
 import os
 import threading
 import io
 import platform
-# from pynput import mouse, keyboard
 import sys
 import subprocess
 import webbrowser
-import requests
 import pytz
 import ctypes
-# import win32com.client
 from dateutil.parser import parse
 from datetime import timedelta
-# import PySimpleGUIQt as sg
 import re
 import datetime as dt
-from dateutil import parser  # Handy for parsing ISO 8601 strings
-# import messagebox from tkinter module  
-import tkinter.messagebox
-import uuid  # Import the UUID module for generating a unique ID
+from dateutil import parser
+import uuid
 import socketio
 from ActivityMonitor import ActivityMonitor
 from pystray import Icon, Menu, MenuItem
 import shutil
 from plyer import notification
-from Quartz import CAShapeLayer, CGPathCreateMutable, CGPathAddRoundedRect, CGRectMake
-from AppKit import NSImage, NSSize
-from tkinter import font
-# Import platform-specific libraries
-if platform.system() == "Windows":
-    import pygetwindow as gw
-elif platform.system() == "Linux":
-    import ewmh
 from pathlib import Path
-from Cocoa import NSWindow, NSView, NSImageView, NSImage, NSTextField, NSButton
-from Cocoa import NSColor, NSFont, NSMakeRect
+
 class GUIApp(NSObject):
     def applicationDidFinishLaunching_(self, notification):
+        def setup_main_menu(app_name="SStrack"):
+            main_menu = NSMenu.alloc().init()
+
+            app_menu_item = NSMenuItem.alloc().init()
+            main_menu.addItem_(app_menu_item)
+            NSApp.setMainMenu_(main_menu)
+
+            app_menu = NSMenu.alloc().init()
+
+            quit_title = f"Quit {app_name}"
+            quit_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                quit_title,
+                "terminate:",  # macOS built-in selector for quitting
+                "q"
+            )
+            app_menu.addItem_(quit_item)
+
+            app_menu_item.setSubmenu_(app_menu)
+            
+           # ✅ Call the menu setup function here
+        setup_main_menu("SStrack")
             # Initialize tracking-related variables
         self.is_timer_running = False
         self.screenshot_count = 0
@@ -117,7 +134,7 @@ class GUIApp(NSObject):
         self.breakFound = False
         self.last_notification_time = 0  
         self.notification_timeout = 3  
-        self.user_id = None
+        # self.user_id = None
         self.projects = ["no project"]
         
 
@@ -143,6 +160,7 @@ class GUIApp(NSObject):
         self.total_intervals = 0
         self.active_intervals = 0
         self.trackingStart_list = []
+        self.screenshot_data_list = []
 
         # Create the main window
         self.window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
@@ -151,6 +169,10 @@ class GUIApp(NSObject):
             2,   # Buffered
             False
         )
+        
+        self.window.setReleasedWhenClosed_(False)
+        self.window.setDelegate_(self)
+
         self.window.setTitle_("SStrack - Home")
         self.window.setBackgroundColor_(NSColor.whiteColor())
         self.window.makeKeyAndOrderFront_(None)
@@ -165,31 +187,48 @@ class GUIApp(NSObject):
         )
         content_view.addSubview_(self.header_view)
 
+
         # Logo
         logo_path = self.resource_path("images/sstracklogo.png")
         if os.path.exists(logo_path):
             logo_image = NSImage.alloc().initByReferencingFile_(logo_path)
-            logo_view = NSImageView.alloc().initWithFrame_(NSMakeRect(40, 10, 130, 60))
-            logo_view.setImage_(logo_image)
-            logo_view.setImageScaling_(2)  # scale proportionally
-            self.header_view.addSubview_(logo_view)
 
+            # ✅ Increase frame size to comfortably fit the image
+            logo_view = NSImageView.alloc().initWithFrame_(NSMakeRect(40, 10, 250, 70))  # Adjust as needed
+
+            logo_view.setImage_(logo_image)
+
+            # ✅ Use scaling mode 1 (NSImageScaleProportionallyUpOrDown)
+            logo_view.setImageScaling_(1)  # 1 = scale proportionally
+
+            # ✅ Optional: Prevent image from being cropped if it’s larger than view
+            logo_view.setImageAlignment_(0)  # Align center
+
+            self.header_view.addSubview_(logo_view)
   
         
         # ✅ Test Button (styled like settings button)
-        test_icon_path = self.resource_path("images/Settings_Icon.png")  # Same or another icon
-        if os.path.exists(test_icon_path):
-            test_image = NSImage.alloc().initByReferencingFile_(test_icon_path)
-            test_image.setTemplate_(False)
-            resized_test_image = GUIApp.resize_nsimage(test_image, 26, 26)
-        
-            self.test_button = NSButton.alloc().initWithFrame_(NSMakeRect(598, 291, 18, 18))  # ⬅️ small button frame
-            self.test_button.setBezelStyle_(0)
-            self.test_button.setBordered_(False)
-            self.test_button.setImage_(resized_test_image)
-            self.test_button.setTarget_(self)
-            self.test_button.setAction_("openSettings:")  # ✅ Make sure your handler ends with a colon
-            content_view.addSubview_(self.test_button)
+        # test_icon_path = self.resource_path("images/Settings_Icon.png")
+        # if os.path.exists(test_icon_path):
+        #     test_image = NSImage.alloc().initByReferencingFile_(test_icon_path)
+        #     test_image.setTemplate_(False)
+        #     resized_test_image = GUIApp.resize_nsimage(test_image, 26, 26)
+
+        #     self.test_button = NSButton.alloc().initWithFrame_(NSMakeRect(598, 291, 32, 32))  # Slightly larger for roundness
+        #     self.test_button.setBezelStyle_(0)
+        #     self.test_button.setBordered_(False)
+        #     self.test_button.setImage_(resized_test_image)
+        #     self.test_button.setTarget_(self)
+        #     self.test_button.setAction_("openSettings:")
+
+        #     # ✅ Add layer styling
+        #     self.test_button.setWantsLayer_(True)
+        #     self.test_button.layer().setCornerRadius_(16.0)  # Half of width/height for full round button
+        #     self.test_button.layer().setMasksToBounds_(True)  # Important for enforcing corner radius
+        #     self.test_button.layer().setBackgroundColor_(NSColor.whiteColor().colorWithAlphaComponent_(0.1).CGColor())  # Optional
+
+        #     content_view.addSubview_(self.test_button)
+
         
 
         
@@ -199,12 +238,20 @@ class GUIApp(NSObject):
             logout_image = NSImage.alloc().initByReferencingFile_(logout_icon_path)
             logout_image.setTemplate_(False)
             resized_logout_image = GUIApp.resize_nsimage(logout_image, 26, 26)
-            self.logout_button = NSButton.alloc().initWithFrame_(NSMakeRect(648, 32, 18, 18))
+
+            self.logout_button = NSButton.alloc().initWithFrame_(NSMakeRect(648, 32, 32, 32))  # Slightly larger for round button
             self.logout_button.setBezelStyle_(0)
             self.logout_button.setBordered_(False)
             self.logout_button.setImage_(resized_logout_image)
             self.logout_button.setTarget_(self)
             self.logout_button.setAction_("logout:")
+
+            # ✅ Apply consistent button styling
+            self.logout_button.setWantsLayer_(True)
+            self.logout_button.layer().setCornerRadius_(16.0)  # Half of width/height for full round
+            self.logout_button.layer().setMasksToBounds_(True)
+            self.logout_button.layer().setBackgroundColor_(NSColor.whiteColor().colorWithAlphaComponent_(0.1).CGColor())  # Optional light BG
+
             self.header_view.addSubview_(self.logout_button)
 
 
@@ -441,35 +488,34 @@ class GUIApp(NSObject):
         content_view.addSubview_(self.bottom_view)
 
     
-        # ✅ First load images
+        # ✅ First load images (scaled to match frame size)
         self.play_icon = self.load_icon(self.resource_path("images/playButton.png"), 80, 80)
         self.play_icon_grey = self.load_icon(self.resource_path("images/Play_Icon_Grey.png"), 80, 80)
         self.pause_icon_grey = self.load_icon(self.resource_path("images/Pause_Icon_Grey.png"), 60, 60)
         self.pause_icon = self.load_icon(self.resource_path("images/Pause_Red.png"), 60, 60)
 
-
-        # ✅ Now safe to create Play Button
-        self.play_button = NSButton.alloc().initWithFrame_(NSMakeRect(40, 40, 40, 40))
+        # ✅ Create Play Button with matching frame size
+        self.play_button = NSButton.alloc().initWithFrame_(NSMakeRect(60, 20, 80, 80))
         self.play_button.setImage_(self.play_icon)
         self.play_button.setBezelStyle_(0)
         self.play_button.setBordered_(False)
-        self.play_button.setImageScaling_(2)
+        self.play_button.setImageScaling_(NSImageScaleProportionallyUpOrDown)
         self.play_button.setTarget_(self)
         self.play_button.setAction_("playButtonClicked:")
         self.bottom_view.addSubview_(self.play_button)
 
-        # ✅ Create Pause Button
-        self.pause_button = NSButton.alloc().initWithFrame_(NSMakeRect(100, 40, 40, 40))
+        # ✅ Create Pause Button with matching frame size
+        self.pause_button = NSButton.alloc().initWithFrame_(NSMakeRect(130, 30, 60, 60))
         self.pause_button.setImage_(self.pause_icon_grey)
         self.pause_button.setBezelStyle_(0)
         self.pause_button.setBordered_(False)
-        self.pause_button.setImageScaling_(2)
+        self.pause_button.setImageScaling_(NSImageScaleProportionallyUpOrDown)
         self.pause_button.setTarget_(self)
         self.pause_button.setAction_("pauseButtonClicked:")
         self.bottom_view.addSubview_(self.pause_button)
 
 
-
+        # abdullah
         # --- Break Button ---
         self.break_button = NSButton.alloc().initWithFrame_(NSMakeRect(210, 40, 160, 40))
         self.break_button.setBezelStyle_(0)
@@ -492,6 +538,9 @@ class GUIApp(NSObject):
         self.break_button.setAttributedTitle_(break_text_attr)
         self.break_button.setFont_(NSFont.boldSystemFontOfSize_(18))
         self.bottom_view.addSubview_(self.break_button)
+        # ✅ Assign correct click handler
+        self.break_button.setTarget_(self)
+        self.break_button.setAction_("breakButtonClicked:")
         
         # --- View Break Timeline (Clickable Text Button) ---
         self.view_break_timeline_button = NSButton.alloc().initWithFrame_(NSMakeRect(230, 20, 120, 20))  # Below Break button
@@ -536,8 +585,11 @@ class GUIApp(NSObject):
         )
         self.view_timeline_button.setAttributedTitle_(timeline_text_attr)
         self.view_timeline_button.setFont_(NSFont.boldSystemFontOfSize_(16))
-        self.bottom_view.addSubview_(self.view_timeline_button)
+        # 🔁 Assign same action as view_break_timeline_button
+        self.view_timeline_button.setTarget_(self)
+        self.view_timeline_button.setAction_("openViewBreakTimeline:")
         
+        self.bottom_view.addSubview_(self.view_timeline_button)
         # Start background listeners (mouse and keyboard)
         threading.Thread(target=self.start_listeners, daemon=True).start()
 
@@ -575,8 +627,8 @@ class GUIApp(NSObject):
    
    
     def openViewBreakTimeline_(self, sender):
-        url = "https://www.sstrack.io/"  # Change your link here!
-        webbrowser.open(url) 
+        url = f"https://www.sstrack.io/auth={self.token}"
+        webbrowser.open(url, new=2) 
     @objc.IBAction
     def printCompanyName_(self, sender):
         print("Company Name: i8is.com")
@@ -744,63 +796,8 @@ class GUIApp(NSObject):
             if hasattr(self, "pause_button") and self.pause_icon_grey:
                 self.pause_button.setImage_(self.pause_icon_grey)
 
-            # ✅ Lock section
-            with self.click_pause_button_lock:
-                if self.is_timer_running:
-                    self.is_timer_running = False
-
-                    # ✅ Remove tray icon (PyObjC version of `self.icon.stop()`, if applicable)
-                    # Add code here if you're using NSStatusBar-based tray icon
-
-                # ✅ Load time_entry_id
-                try:
-                    with open(GUIApp.get_data_file_path("time_entry_id.pkl"), "rb") as f:
-                        timeEntryId = pickle.load(f)
-                except (FileNotFoundError, EOFError):
-                    print("❌ time_entry_id.pkl not found or empty.")
-                    return
-
-                # ✅ Load trackingStop_list
-                self.trackingStop_list = []
-                stop_list_path = GUIApp.get_data_file_path("trackingStop_list.pkl")
-                if os.path.isfile(stop_list_path):
-                    try:
-                        with open(stop_list_path, "rb") as f:
-                            self.trackingStop_list = pickle.load(f)
-                    except EOFError:
-                        print("⚠️ trackingStop_list.pkl is empty. Starting fresh.")
-
-                # ✅ Append tracking stop data
-                current_time = self.exact_time if self.sleep_mode else datetime.datetime.now(pytz.UTC)
-                trackingstop = {"endTime": current_time, "timeEntryId": timeEntryId}
-                self.trackingStop_list.append(trackingstop)
-
-                # ✅ Save updated stop list
-                with open(stop_list_path, "wb") as f:
-                    pickle.dump(self.trackingStop_list, f)
-
-                # ✅ Display Notification
-                if not self.breakActive:
-                    message = self.description or ""
-                    if self.selected_project_name and self.selected_project_name != "no project":
-                        project_name = self.selected_project_name.upper()
-                        message = f"{project_name}\n{message}"
-
-                    os.system('terminal-notifier -title "SSTRACK" -message "Tracking stopped" -appIcon "images/animatedlogo.png"')
-
-                # ✅ Reset intervals and break
-                self.total_intervals = 0
-                self.active_intervals = 0
-                self.breakStartedOn = current_time
-
-                # ✅ Handle popup & break fetching
-                if self.popActive:
-                    self.popActive = False
-                    threading.Thread(target=self.getBreaktimes).start()
-
-                # ✅ Start stop timer
-                threading.Thread(target=self.stop_Timer).start()
-
+            self.click_pause_button()
+            
         except Exception as e:
             print(f"⚠️ An error occurred in pauseButtonClicked_: {e}")
 
@@ -1273,7 +1270,7 @@ class GUIApp(NSObject):
                         self.updateSettings()
                 else:
                     print(
-                        f"Failed to get data: {response.status_code} - {response.text}"
+                        f"Failed to get data employee setting: {response.status_code} - {response.text}"
                     )
                     # Check if the user is not logged in, access is blocked, or the user is archived
                     if (
@@ -1376,6 +1373,7 @@ class GUIApp(NSObject):
 
             self.company = self.user_info.get("company", "N/A")
             self.user_id = self.user_info.get("_id", "N/A")
+            
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -1707,53 +1705,62 @@ class GUIApp(NSObject):
             return "N/A"
 
 
-
     def screenshots_data(self):
         try:
+            print("🟡 screenshots_data called")
             with self.screenshots_data_lock:
+                print("🔒 Acquired screenshots_data_lock")
+    
                 # Capture the screenshot using PIL's ImageGrab
                 screenshot = ImageGrab.grab()
-                
+                print("📸 Screenshot captured")
+    
                 # Convert the screenshot to RGB mode if it is in RGBA
                 if screenshot.mode == "RGBA":
                     screenshot = screenshot.convert("RGB")
-                    
+                    print("🔄 Converted RGBA to RGB")
+    
                 jpeg_quality = 50  # You can adjust this value
-
+                print(f"📐 JPEG quality set to {jpeg_quality}")
+    
                 # Convert the image to a variable (in-memory data) with the specified quality
                 with io.BytesIO() as output:
                     screenshot.save(output, format="JPEG", quality=jpeg_quality)
                     screenshot_data = output.getvalue()
-
-                # with open(filename, "wb") as file:
+                    print(f"💾 Screenshot converted to bytes ({len(screenshot_data)} bytes)")
+    
                 active_window_url = self.get_active_window_hostname()
+                print(f"🧭 Active Window: {active_window_url}")
+                print(f"🆔 Current user_id: {self.user_id}")
                 if active_window_url:
-                    print(f"Active Window: {active_window_url}")
                     time_entry_id_path = GUIApp.get_data_file_path("time_entry_id.pkl")
+                    print(f"📁 Reading time_entry_id from: {time_entry_id_path}")
                     with open(time_entry_id_path, "rb") as f:
                         timeEntryId = pickle.load(f)
-                        current_time = datetime.datetime.now(pytz.UTC)
-                        formatted_time = current_time.strftime("%I-%M-%S-%p_%m-%d-%Y")
-
-                        filename = f"screenshot_{formatted_time}_{self.user_id}"
-                        print(filename)
-
-                        # if os.path.isfile("screenshots_data.pkl"):
-                        if os.path.isfile(GUIApp.get_data_file_path("screenshots_data.pkl")):
-                            try:
-                                with open(GUIApp.get_data_file_path("screenshots_data.pkl"), "rb") as f:
-                                    try:
-                                        self.screenshot_data_list = pickle.load(f)
-                                    except pickle.UnpicklingError as e:
-                                        # Handle the unpickling error gracefully
-                                        print(
-                                            f"Error while unpickling: {e}. Skipping loading screenshots data."
-                                        )
-                                        self.screenshot_data_list = []  # Initialize empty list or take appropriate action
-                            except EOFError:
-                                # Handle the case when there is no data in the file
-                                self.screenshot_data_list = []  # or any other appropriate action
-
+    
+                    current_time = datetime.datetime.now(pytz.UTC)
+                    formatted_time = current_time.strftime("%I-%M-%S-%p_%m-%d-%Y")
+                    filename = f"screenshot_{formatted_time}_{self.user_id}"
+                    print(f"📝 Screenshot filename: {filename}")
+    
+                    # Load existing screenshot data list
+                    screenshot_data_path = GUIApp.get_data_file_path("screenshots_data.pkl")
+                    if os.path.isfile(screenshot_data_path):
+                        try:
+                            with open(screenshot_data_path, "rb") as f:
+                                try:
+                                    self.screenshot_data_list = pickle.load(f)
+                                    print(f"📂 Loaded existing screenshot_data_list with {len(self.screenshot_data_list)} items")
+                                except pickle.UnpicklingError as e:
+                                    print(f"⚠️ Error while unpickling: {e}. Initializing empty list.")
+                                    self.screenshot_data_list = []
+                        except EOFError:
+                            print("⚠️ EOFError: File empty. Initializing empty list.")
+                            self.screenshot_data_list = []
+                    else:
+                        self.screenshot_data_list = []
+                        print("📄 screenshots_data.pkl not found. Starting new list.")
+    
                     screenshots_data = {
                         "files": {
                             "file": (f"{filename}.jpeg", screenshot_data, "image/jpeg")
@@ -1766,16 +1773,29 @@ class GUIApp(NSObject):
                         "disabled": self.disabled,
                     }
                     self.screenshot_data_list.append(screenshots_data)
-                    with open(GUIApp.get_data_file_path("screenshots_data.pkl"), "wb") as f:
+                    print(f"✅ Appended new screenshot. Total now: {len(self.screenshot_data_list)}")
+    
+                    with open(screenshot_data_path, "wb") as f:
                         pickle.dump(self.screenshot_data_list, f)
+                        print("💾 Saved updated screenshot_data_list")
+    
                     if len(self.trackingStart_list) > 0:
+                        print("▶️ trackingStart_list has items. Calling start_Timer.")
                         self.start_Timer()
+    
+                    print("🚀 Starting addScreenshots thread")
                     threading.Thread(target=self.addScreenshots).start()
+    
                     self.startTime = datetime.datetime.now(pytz.UTC)
-
+                    print(f"🕒 Updated self.startTime to {self.startTime}")
+    
+                else:
+                    print("❌ No active window detected. Skipping screenshot data creation.")
+    
         except Exception as e:
-            print(f"An error occurred screenshots_data: {e}")
+            print(f"❗ An error occurred in screenshots_data: {e}")
             return "N/A"
+    
 
     def check_activity(self):
         try:
@@ -1836,10 +1856,7 @@ class GUIApp(NSObject):
                                 )
                                 threading.Thread(target=self.click_pause_button).start()
 
-                                tkinter.messagebox.showinfo(
-                                    "SStrack Monitor Paused",
-                                    "Your SStrack Monitor has been paused due to inActivity.\nPlease start again!",
-                                )
+                           
                         else:
                             self.total = 0
                     if self.total_intervals % 6 == 0:
@@ -1863,15 +1880,23 @@ class GUIApp(NSObject):
             print(f"An error occurred: {e}")
             return "N/A"
 
-
     def addScreenshots(self):
         try:
+            print("▶️ addScreenshots called.")
+
             if len(self.trackingStart_list) == 0:
+                print("✔️ trackingStart_list is empty (no pending starts).")
+
                 if self.is_timer_running:
+                    print("⏱️ Timer is running. Proceeding with screenshot upload.")
+
                     with self.screenshots_add_lock:
+                        print("🔒 Acquired screenshots_add_lock")
+
                         try:
                             with open(GUIApp.get_data_file_path("screenshots_data.pkl"), "rb") as f:
                                 self.screenshot_data_list = pickle.load(f)
+                                print(f"📸 Loaded {len(self.screenshot_data_list)} screenshots to process.")
 
                             if self.screenshot_data_list:
                                 api_url = "https://myuniversallanguages.com:9093/api/v1"
@@ -1879,17 +1904,18 @@ class GUIApp(NSObject):
                                     "Authorization": "Bearer " + self.token,
                                 }
 
-                                try:
-                                    # Now you can iterate over the loaded data
-                                    index = 0
-                                    while index < len(self.screenshot_data_list):
-                                        screenshot_data = self.screenshot_data_list[
-                                            index
-                                        ]
-                                        count = 0
-                                        files = screenshot_data["files"]
-                                        timeEntryId = screenshot_data["timeEntryId"]
+                                index = 0
+                                while index < len(self.screenshot_data_list):
+                                    screenshot_data = self.screenshot_data_list[index]
+                                    print(f"📤 Uploading screenshot {index + 1}/{len(self.screenshot_data_list)}")
+                                    print("📤 Screenshot data payload:")
+                                    print(json.dumps({k: v for k, v in screenshot_data.items() if k != 'files'}, indent=2, default=str))
 
+                                    count = 0
+                                    files = screenshot_data["files"]
+                                    timeEntryId = screenshot_data["timeEntryId"]
+
+                                    try:
                                         response = requests.patch(
                                             f"{api_url}/timetrack/time-entries/{timeEntryId}/screenshotss",
                                             headers=headers,
@@ -1897,66 +1923,59 @@ class GUIApp(NSObject):
                                             data=screenshot_data,
                                         )
 
+                                        print(f"🔁 Response code: {response.status_code}")
                                         if response.ok:
                                             data = response.json()
+                                            print("✅ Screenshot uploaded successfully.")
+                                            print("📨 Full response JSON:", data)
 
-                                            # Use get to avoid potential KeyError
-                                            filename = data.get("filename")
+                                            filename = data.get("filename", "N/A")
+                                            print(f"🖼️ Server response filename: {filename}")
 
-                                            # Remove the first item from the list
                                             self.screenshot_data_list.pop(0)
-                                            # Reset index to 0
-                                            index = 0
-                                            with open(
-                                                GUIApp.get_data_file_path("screenshots_data.pkl"), "wb"
-                                            ) as f:
-                                                pickle.dump(
-                                                    self.screenshot_data_list, f
-                                                )
+                                            index = 0  # reset index
+                                            with open(GUIApp.get_data_file_path("screenshots_data.pkl"), "wb") as f:
+                                                pickle.dump(self.screenshot_data_list, f)
+                                                print("📦 Updated screenshot_data.pkl after removing uploaded entry.")
 
                                             if len(self.screenshot_data_list) == 0:
+                                                print("📈 All screenshots uploaded. Calling fetch_data().")
                                                 self.fetch_data()
-
                                         else:
-                                            print(
-                                                f"Failed to get data: {response.status_code} - {response.text}"
-                                            )
+                                            print(f"❌ Failed to upload screenshot: {response.status_code} - {response.text}")
                                             count += 1
                                             if count >= 3:
-                                                # Skip this item for now and move to the next one
-                                                print(
-                                                    f"Skipping item {index} after 3 failed attempts"
-                                                )
-                                                count = 0  # Reset the count for the next item
-                                                index += 1  # Move to the next item
+                                                print(f"⏭️ Skipping item {index} after 3 failed attempts")
+                                                index += 1
                                             else:
-                                                # Retry the same item
-                                                print(
-                                                    f"Retrying item {index}, attempt {count}"
-                                                )
+                                                print(f"🔁 Retrying item {index}, attempt {count}")
                                                 self.screenshot_data_list.pop(0)
                                                 index = 0
 
-                                except (
-                                    requests.exceptions.RequestException
-                                ) as internet_error:
-                                    # Handle internet-related errors, such as connection issues
-                                    print("Internet issue:", internet_error)
-                                    return None  # This will stop the function from continuing
+                                    except requests.exceptions.RequestException as internet_error:
+                                        print(f"🌐 Internet error during upload: {internet_error}")
+                                        return None
+
                             else:
-                                return None  # This will stop the function from continuing
+                                print("ℹ️ No screenshots to upload.")
+                                return None
 
                         except FileNotFoundError:
-                            # Handle the case where the pickle file doesn't exist or is empty
-                            (print("file not found"),)
-                            return None  # This will stop the function from continuing
+                            print("📁 screenshots_data.pkl not found.")
+                            return None
+
+                else:
+                    print("⏹️ Timer is not running. Screenshot upload skipped.")
+                    return None
+
             else:
-                # threading.Thread(target=self.start_Timer).start()
-                self.start_Timer
+                print("⏳ trackingStart_list has pending entries. Calling start_Timer instead.")
+                self.start_Timer()
 
         except Exception as e:
-            (print(f"An error occurred: {e}"),)
-            return None  # This will stop the function from continuing
+            print(f"❗ An error occurred in addScreenshots: {e}")
+            return None
+
 
     def on_activity(self):
         self.activity_flag = True
@@ -2181,15 +2200,11 @@ class GUIApp(NSObject):
     #     if not self.calledImmediate:
     #         threading.Thread(target=self.fetch_data).start()
     #         self.root.after(300000, self.get_data)
-
     def fetch_data(self):
         try:
             print("hello fetch data")
             if not self.calledImmediate:
                 with self.fetch_data_lock:
-                    if not self.token:
-                        print("❗Token not found. You must login first.")
-                        return None
                     api_url = "https://myuniversallanguages.com:9093/api/v1"
 
                     headers = {
@@ -2213,7 +2228,7 @@ class GUIApp(NSObject):
                         self.hoursLength()
                     else:
                         print(
-                            f"Failed to get data: {response.status_code} - {response.text}"
+                            f"Failed to get data fetch data: {response.status_code} - {response.text}"
                         )
                       # Check if the user is not logged in or if the message indicates the user doesn't exist
                         # Check if the user is not logged in, access is blocked, or the user is archived
@@ -2251,9 +2266,10 @@ class GUIApp(NSObject):
         except Exception as e:
             print(f"Error occured while fetching sdata: {e}")
             return None
-            # self.root.after(300000, self.get_data)
-
-
+        
+        
+        
+        
     def hoursLength(self):
         # self.hours = '2h'
         # self.minutes = '22m'
@@ -2381,105 +2397,94 @@ class GUIApp(NSObject):
         ctypes.windll.user32.SendMessageW(hwnd, 0x80, 1, icon)
         print(f"Taskbar icon set to: {icon_path}")
 
+
     def start_Timer(self):
         try:
-            
             with self.play_timer_lock:
-                # if os.path.isfile('trackingStart_list.pkl'):
-                if os.path.isfile(GUIApp.get_data_file_path("trackingStart_list.pkl")):
-                    with open(GUIApp.get_data_file_path("trackingStart_list.pkl"), "rb") as f:
+                start_path = GUIApp.get_data_file_path("trackingStart_list.pkl")
+                if os.path.isfile(start_path):
+                    with open(start_path, "rb") as f:
                         self.trackingStart_list = pickle.load(f)
 
-                        if len(self.trackingStart_list) > 0:
-                            index = 0
-                            while index < len(self.trackingStart_list):
-                                startTracking = self.trackingStart_list[index]
+                    if len(self.trackingStart_list) > 0:
+                        index = 0
+                        while index < len(self.trackingStart_list):
+                            startTracking = self.trackingStart_list[index]
+                            uniqueId = startTracking['timeEntryId']
 
-                                uniqueId = startTracking['timeEntryId']
-                          
-                                api_url = "https://myuniversallanguages.com:9093/api/v1"
+                            api_url = "https://myuniversallanguages.com:9093/api/v1"
+                            headers = {
+                                "Authorization": "Bearer " + self.token,
+                            }
 
-                                headers = {
-                                    "Authorization": "Bearer " + self.token,
-                                }
+                            print(f"📤 Sending timer start payload for entry: {uniqueId}")
+                            print("🧾 Payload:", json.dumps(startTracking, indent=2, default=str))
 
+                            try:
                                 response = requests.post(
                                     f"{api_url}/timetrack/addd",
                                     headers=headers,
                                     data=startTracking,
                                 )
-                                print("API Response Status:", response.status_code)
-                                if response.ok:
+                            except Exception as e:
+                                print(f"❌ Request failed: {e}")
+                                return None
 
-                                    data = response.json()
+                            print("📡 Response code:", response.status_code)
 
-                                    print("timer start")
-                                    timeEntry = data["data"]
-                                    timeentryid = timeEntry
-                                    # delete index from start timer list
-                                    # Remove the first item from the list
-                                    self.trackingStart_list.pop(0)
-                                    # Reset index to 0
-                                    index = 0
+                            if response.ok:
+                                data = response.json()
+                                print("✅ Timer start API successful. Response:", data)
+                                timeentryid = data["data"]
 
-                                    with open(GUIApp.get_data_file_path("trackingStart_list.pkl"), "wb") as f:
-                                        pickle.dump(self.trackingStart_list, f)
-                                    # Checking if the pickle file exists
+                                # Remove the processed item
+                                self.trackingStart_list.pop(0)
+                                index = 0
 
-                                    if os.path.isfile(GUIApp.get_data_file_path("time_entry_id.pkl")):
-                                        # Loading the previous time entry ID from the pickle file
-                                        with open(GUIApp.get_data_file_path("time_entry_id.pkl"), "rb") as f:
-                                            previousTimeEntryId = pickle.load(
-                                                f)
+                                with open(start_path, "wb") as f:
+                                    pickle.dump(self.trackingStart_list, f)
 
-                                            # Checking if the previous time entry ID matches the current one
-                                        if previousTimeEntryId == uniqueId:
-                                            # Writing the current time entry ID to the pickle file
-                                            with open(GUIApp.get_data_file_path("time_entry_id.pkl"), "wb") as f:
-                                                pickle.dump(timeentryid, f)
+                                # Update time_entry_id if it matches
+                                id_path = GUIApp.get_data_file_path("time_entry_id.pkl")
+                                if os.path.isfile(id_path):
+                                    with open(id_path, "rb") as f:
+                                        previousTimeEntryId = pickle.load(f)
+                                    if previousTimeEntryId == uniqueId:
+                                        with open(id_path, "wb") as f:
+                                            pickle.dump(timeentryid, f)
 
-                                    # ======== read screenshots data and replace id =========== #
-                                    if os.path.isfile(GUIApp.get_data_file_path("screenshots_data.pkl")):
-                                        with open(GUIApp.get_data_file_path("screenshots_data.pkl"), "rb") as f:
-                                            screenshotsData = pickle.load(f)
+                                # Update screenshot entries
+                                screenshot_path = GUIApp.get_data_file_path("screenshots_data.pkl")
+                                if os.path.isfile(screenshot_path):
+                                    with open(screenshot_path, "rb") as f:
+                                        screenshotsData = pickle.load(f)
+                                    for entry in screenshotsData:
+                                        if entry.get("timeEntryId") == uniqueId:
+                                            entry["timeEntryId"] = timeentryid
+                                    with open(screenshot_path, "wb") as f:
+                                        pickle.dump(screenshotsData, f)
 
-                                        # Check if screenshotsData contains any data
-                                        if screenshotsData:
-                                            # Iterate over the data
-                                            for entry in screenshotsData:
-                                                # Assuming entry has a key 'timeEntry'
-                                                timeEntry = entry.get('timeEntryId')
-                                                if timeEntry == uniqueId:
-                                                    # Replace timeEntry with timeEntryId
-                                                    entry['timeEntryId'] = timeentryid
+                                # Update stop list
+                                stop_path = GUIApp.get_data_file_path("trackingStop_list.pkl")
+                                if os.path.isfile(stop_path):
+                                    with open(stop_path, "rb") as f:
+                                        trackerStopList = pickle.load(f)
+                                    for stop in trackerStopList:
+                                        if stop.get("timeEntryId") == uniqueId:
+                                            stop["timeEntryId"] = timeentryid
+                                    with open(stop_path, "wb") as f:
+                                        pickle.dump(trackerStopList, f)
 
-                                            # Save the modified data back to the pickle file
-                                            with open(GUIApp.get_data_file_path("screenshots_data.pkl"), "wb") as f:
-                                                pickle.dump(screenshotsData, f)
-
-                                    # ========= read stop Timer list data and replace id =========== #
-                                    # if os.path.isfile("trackingStop_list.pkl"):
-                                    if os.path.isfile(GUIApp.get_data_file_path("trackingStop_list.pkl")):
-                                        with open(GUIApp.get_data_file_path("trackingStop_list.pkl"), "rb") as f:
-                                            trackerStopList = pickle.load(f)
-
-                                        if trackerStopList:
-                                            for stop in trackerStopList:
-                                                timeEntry = stop.get(
-                                                    'timeEntryId')
-                                                if timeEntry == uniqueId:
-
-                                                    # Replace timeEntry with timeEntryId
-                                                    stop['timeEntryId'] = timeentryid
-
-                                            with open(GUIApp.get_data_file_path("trackingStop_list.pkl"), "wb") as f:
-                                                pickle.dump(trackerStopList, f)
-
+                            else:
+                                print(f"❌ Timer start API failed: {response.status_code}")
+                                print("🪵 Response text:", response.text)
+                                break  # stop processing more entries on failure
         except Exception as error:
-            print("error start timmer:", error)
+            print("🚨 error start_Timer:", error)
             return None
 
-#
+
+
 #    # Modify the click_play_button method to accept the event argument
     def click_play_button(self, event=None):
         try:
@@ -2498,7 +2503,7 @@ class GUIApp(NSObject):
                         os.system("taskkill /f /im SSTRACK.exe")
                 else:
                     # Destroy the current window
-                    self.root.destroy()
+                    # self.root.destroy()
                     # Restart the main.py script as a new process
                     subprocess.Popen([self.python_exe, "main.py"])
             else:
@@ -2552,8 +2557,8 @@ class GUIApp(NSObject):
                         # self.playTime = datetime.datetime.now(pytz.UTC)
 
                         trackingstart = {
-                            "projectId": self.projectId,
-                            "description": self.description,
+                            "projectId": self.projectId if self.projectId and self.projectId != "no project" else None,
+                            "description": self.description if self.description else "no description",
                             "startTime": self.playTime,
                             "userId": self.user_id,
                             "timeEntryId": unique_id,
@@ -2606,6 +2611,7 @@ class GUIApp(NSObject):
         
         
     def setUpBreak(self):
+        print("setUpBreak")
         try:
             # self.break_button.config(
             #                 text="Break",
@@ -2630,11 +2636,9 @@ class GUIApp(NSObject):
                 self.breakUsed["breakEndOn"] = self.playTime
             if self.breakUsed:
                 self.breakData.append(self.breakUsed)
-                self.break_button.config(
-                            text="Break",
-                            bg="#E8F4FC",  # Initial background color
-                            fg="#7094B0",  # White text when break ends
-                        )
+                self.update_break_button_title("Break", NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0))  # Title text color
+                self.set_break_button_color(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.91, 0.96, 0.99, 1.0))  # Background  # Green
+
                 # Save the updated data to `breakData.pkl`
                 with open(GUIApp.get_data_file_path("breakData.pkl"), "wb") as f:
                     pickle.dump(self.breakData, f)
@@ -2664,6 +2668,8 @@ class GUIApp(NSObject):
         except Exception as error:
             print(error)
             return None
+
+
 
     def stop_Timer(self):
         try:
@@ -2706,17 +2712,17 @@ class GUIApp(NSObject):
             return None
 
     def click_pause_button(self, event=None):
-        self.root.wm_iconbitmap(self.resource_path("images/pauseico.ico"))
+        # self.root.wm_iconbitmap(self.resource_path("images/pauseico.ico"))
         try:
             with self.click_pause_button_lock:
                 if self.is_timer_running:
                     self.is_timer_running = False
 
-                    if hasattr(self, 'icon') and isinstance(self.icon, Icon):
-                        self.icon.stop()
-                        print("Tray icon removed.")
-                    else:
-                        print("Tray icon is not initialized or not of type 'Icon'")
+                    # if hasattr(self, 'icon') and isinstance(self.icon, Icon):
+                    #     self.icon.stop()
+                    #     print("Tray icon removed.")
+                    # else:
+                    #     print("Tray icon is not initialized or not of type 'Icon'")
 
                 # Attempt to load time_entry_id.pkl
                 try:
@@ -2746,11 +2752,11 @@ class GUIApp(NSObject):
                     pickle.dump(self.trackingStop_list, f)
 
                 # Update UI components
-                self.canvas.itemconfig(self.play_button, image=self.play_icon)
-                self.canvas.itemconfig(self.pause_button, image=self.pause_icon_grey)
-                self.canvas.tag_unbind(self.pause_button, "<Button-1>")
-                self.canvas.tag_bind(self.play_button, "<Button-1>", self.click_play_button)
-                self.canvas.lift(self.play_button)
+                # self.canvas.itemconfig(self.play_button, image=self.play_icon)
+                # self.canvas.itemconfig(self.pause_button, image=self.pause_icon_grey)
+                # self.canvas.tag_unbind(self.pause_button, "<Button-1>")
+                # self.canvas.tag_bind(self.play_button, "<Button-1>", self.click_play_button)
+                # self.canvas.lift(self.play_button)
                 if not self.breakActive:
 
                     message = ""
@@ -2789,6 +2795,8 @@ class GUIApp(NSObject):
 
         except Exception as e:
             print(f"An error occurred click_pause_button: {e}")
+
+
 
     def restartTimer(self):
         try:
@@ -2868,19 +2876,11 @@ class GUIApp(NSObject):
             return True
         return False
 
-    def click_break_button(self, event=None):
+    def click_break_button(self, sender):
         if not self.break_button_enabled:
             self.break_button_enabled = True
             print("Break button is disabled. Click ignored.")
-              # Display a notification with an icon
-            # Notifier.notify(
-            #     title="Break stopped",
-            #     message="Your break has stopped",
-            #     timeout=3,  # Notification disappears after 3 seconds
-            #     app_icon="images/animatedlogo.ico"  # Provide the path to your icon file (e.g., .ico or .png)
-            # )
             os.system('terminal-notifier -title "SSTRACK started" -message "Break stopped" -appIcon "images/animatedlogo.png"')
-            # self.setUpBreak()
             threading.Thread(target=self.setUpBreak, daemon=True).start()
             return
 
@@ -2888,46 +2888,34 @@ class GUIApp(NSObject):
             try:
                 self.breakActive = True
                 self.breakStartedOn = datetime.datetime.now(pytz.UTC)
-
-                # Disable the break button
                 self.break_button_enabled = False
 
-                # Display a notification with an icon
                 if self.can_display_notification():
-                    # Notifier.notify(
-                    #     title="Break started",
-                    #     message="Your break has started",
-                    #     timeout=3,
-                    #     app_icon="images/animatedlogo.ico"
-                    # )
                     os.system('terminal-notifier -title "SSTRACK started" -message "break started" -appIcon "images/animatedlogo.png"')
-                self.breakId = str(uuid.uuid4())
 
-                # Start `startBreakTime` in a separate thread
+                self.breakId = str(uuid.uuid4())
                 threading.Thread(target=self.startBreakTime, daemon=True).start()
             except Exception as e:
                 print(f"Error starting break time: {e}")
 
         elif self.breakFound and self.parse_remaining_break_time(self.BreakTime) < 1:
             if self.can_display_notification():
-                # Display a notification with an icon
-                # Notifier.notify(
-                #     title="Break Time",
-                #     message="The assigned break time has already been utilized",
-                #     timeout=3,
-                #     app_icon="images/animatedlogo.ico"
-                # )
-                os.system('terminal-notifier -title "SSTRACK started" -message "BThe assigned break time has already been utilized" -appIcon "images/animatedlogo.png"')
+                os.system('terminal-notifier -title "SSTRACK started" -message "The assigned break time has already been utilized" -appIcon "images/animatedlogo.png"')
+
         elif not self.breakFound:
             if self.can_display_notification():
-                # Display a notification with an icon
-                # Notifier.notify(
-                #     title="Break Time",
-                #     message="No break time has been assigned by the company.",
-                #     timeout=3,
-                #     app_icon="images/animatedlogo.ico"
-                # )
                 os.system('terminal-notifier -title "SSTRACK started" -message "No break time has been assigned by the company." -appIcon "images/animatedlogo.png"')
+    
+ 
+    # abdullah
+    
+    def breakButtonClicked_(self, sender):
+        print("✅ Break button clicked")
+        self.click_break_button(sender)
+
+
+
+
 
     def on_closing(self):
         try:
@@ -2954,47 +2942,48 @@ class GUIApp(NSObject):
             print(f"An error occurred: {e}")
             return "N/A"
 
-    @objc.typedSelector(b"v@:@")
-    def logout_(self, sender):
-        print("🚪 Logout button clicked")
 
-        # --- 1. Stop timer if running ---
+    def logout_(self, sender):
+        print("🚪 Logout triggered")
+
+        # Stop the timer if active
         if hasattr(self, "is_timer_running") and self.is_timer_running:
             self.pauseButtonClicked_(None)
 
-        # --- 2. Remove session files ---
+        # Optional: Call cleanup method if available
+        if hasattr(self, "cleanup"):
+            try:
+                self.cleanup()
+            except Exception as e:
+                print(f"⚠️ Error during cleanup: {e}")
+
+        # Delete session files
+        data_path = GUIApp.get_data_file_path("data.pkl")
+        time_id_path = GUIApp.get_data_file_path("time_entry_id.pkl")
+
         try:
-            os.remove(GUIApp.get_data_file_path("data.pkl"))
+            os.remove(data_path)
+            print(f"✅ Deleted: {data_path}")
         except FileNotFoundError:
-            pass
+            print(f"⚠️ Not found: {data_path}")
 
         try:
-            os.remove(GUIApp.get_data_file_path("time_entry_id.pkl"))
+            os.remove(time_id_path)
+            print(f"✅ Deleted: {time_id_path}")
         except FileNotFoundError:
-            pass
+            print(f"⚠️ Not found: {time_id_path}")
 
-        # --- 3. Close current window ---
-        if hasattr(self, "window"):
-            self.window.close()
+        # Show alert to user before quitting
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_("Logged out")
+        alert.setInformativeText_("Please relaunch the app and log in again.")
+        alert.runModal()
 
-        # --- 4. Relaunch login.py ---
-        try:
-            python_executable = sys.executable  # Current venv Python path
-            script_dir = os.path.dirname(os.path.abspath(__file__))  # Current directory
-            login_script_path = os.path.join(script_dir, "login.py")  # Full path to login.py
-
-            # Launch login.py
-            subprocess.Popen([python_executable, login_script_path])
-
-            print("🔄 Relaunching login window...")
-
-            # --- 5. Quit current app safely ---
-            NSApplication.sharedApplication().terminate_(self)
-
-        except Exception as e:
-            print("❌ Failed to relaunch login:", e)
-
+        # Quit the application cleanly
+        print("🛑 Exiting application after logout")
+        NSApplication.sharedApplication().terminate_(None)
     
+           
     def handle_sleep_mode(self):
         """Continuously monitors system state and triggers sleep mode or break time."""
         last_break_triggered_time = None  # Track the last time a break was triggered
@@ -3069,11 +3058,7 @@ class GUIApp(NSObject):
                         print("Computer is in sleep mode")
                         threading.Thread(target=self.click_pause_button).start()
 
-                        if time_difference.total_seconds() <= 2 * 60 * 60:  # Check if time difference is less than 2 hours
-                            tkinter.messagebox.showinfo(
-                                "SSTRACK Paused", 
-                                "Your SStrack has been paused due to Sleep Mode.\nPlease start again!"
-                            )
+                     
 
                 # Update exact_time if the date has changed
                 if self.exact_time.date() != currenttime.date():
@@ -3456,6 +3441,8 @@ class GUIApp(NSObject):
 
         # Once the window is small enough, minimize it
         self.root.iconify()
+      
+   
         
     def getBreaktimes(self):
         try:
@@ -3499,9 +3486,26 @@ class GUIApp(NSObject):
         except Exception as e:
             print(f"Failed to getting break time: {e}")
             return None
+ 
+    def update_break_button_title(self, text, color=NSColor.whiteColor()):
+        def _update():
+            attr = NSAttributedString.alloc().initWithString_attributes_(
+                text,
+                NSDictionary.dictionaryWithObject_forKey_(color, NSForegroundColorAttributeName)
+            )
+            self.break_button.setAttributedTitle_(attr)
+        self.performSelectorOnMainThread_withObject_waitUntilDone_("runBlock:", _update, False)
 
+    def set_break_button_color(self, nscolor):
+        def _update():
+            self.break_button.layer().setBackgroundColor_(nscolor.CGColor())
+        self.performSelectorOnMainThread_withObject_waitUntilDone_("runBlock:", _update, False)
 
-    # Parse remainingBreakTime to get the total minutes
+    # You must define this Objective-C method on your class to use 'runBlock:' selector
+    @objc.selector
+    def runBlock_(self, block):
+        block()    # Parse remainingBreakTime to get the total minutes
+
     def parse_remaining_break_time(self, remaining_break_time):
         hours, minutes = 0, 0
         if 'h' in remaining_break_time:
@@ -3513,7 +3517,7 @@ class GUIApp(NSObject):
 
 
     def startBreakTime(self):
-        
+        print("break time start")
         try:
             while self.breakActive:
                 with self.startBreakTime_lock:
@@ -3526,11 +3530,9 @@ class GUIApp(NSObject):
                         self.breakEndOn = datetime.datetime.now(pytz.UTC)
                         print(self.breakEndOn, "breakstarted on")
 
-                        self.break_button.config(
-                                text=f"Time: {self.BreakTime}",  # Text when break ends
-                                bg="#68BB45",  # Green background when break ends
-                                fg="#FFFFFF",  # White text when break ends
-                            )
+                        self.update_break_button_title(f"Time: {self.BreakTime}", NSColor.whiteColor())
+                        self.set_break_button_color(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.41, 0.73, 0.27, 1.0))  # Green
+
 
                         if self.is_timer_running:
                             # self.click_pause_button()
@@ -3594,6 +3596,7 @@ class GUIApp(NSObject):
             print(f"Failed to starting break time: {e}")
             return None
 
+
     def stop_break(self):
         print("break time stop")
 
@@ -3636,6 +3639,11 @@ class GUIApp(NSObject):
 
                         self.breakActive=False
                         last_break_triggered_time = currenttime_truncated  # Update the last triggered time
+                     # Reset button UI to default state
+                        self.update_break_button_title("Break", NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0))  # Title text color
+                        self.set_break_button_color(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.91, 0.96, 0.99, 1.0))  # Background
+
+
                         # threading.Thread(target=self.breakExecution).start()
 
             # Sleep for 1 second, ensuring alignment with the start of each second
@@ -3645,6 +3653,7 @@ class GUIApp(NSObject):
             return None
 
     def breakExecution(self):
+
         try:
             print("hello break exe")
             with self.breakExecution_lock:
@@ -3674,7 +3683,7 @@ class GUIApp(NSObject):
                             )
 
                             if response.ok:
-                                print("Timer stopped:")
+                                print("Timer stopped break :")
                                 # Remove the processed data from the list and update the file
                                 del self.breakData_list[0]
                                 with open(GUIApp.get_data_file_path("breakData.pkl"), "wb") as f:
@@ -3707,7 +3716,7 @@ class GUIApp(NSObject):
                 self.BreakTime = json_data.get("data", {}).get('remainingBreakTime')
                 # Validate and update UI only if BreakTime is valid
                 # Dynamically update UI based on BreakTime
-                self.update_break_label()
+                # self.update_break_label()
                 # self.break_label.config(text=self.BreakTime)
 
         except Exception as error:
@@ -3716,36 +3725,50 @@ class GUIApp(NSObject):
 
     def update_break_label(self):
         try:
-            """
-            Updates the break labels if the break time is valid.
-            """
+            print("🔁 Updating break label...")
+
             if self.is_break_time_valid(self.BreakTime):
-                # Remove the fetching placeholder
-                # self.fetching_label.destroy()
+                print("✅ Break time is valid")
 
-                # Add "Remaining Break" label
-                tk.Label(
-                    self.frame0, text="", fg="#7ACB59", bg="#0E4772", font=("Roboto", 13)
-                ).place(x=420, y=18)
-
-                # Add break time label
-              
             if not self.break_button_enabled:
-                self.break_button.config(
-                    text=f"Time: {self.BreakTime}",  # Text when break ends
-                    bg="#68BB45",  # Green background when break ends
-                    fg="#FFFFFF",  # White text when break ends
-                )
-           
-                # self.break_button.config(
-                #     text=self.BreakTime,  # Text when break ends
-                #     bg="#68BB45",  # Green background when break ends
-                #     fg="#FFFFFF",  # White text when break ends
-                # )
-        except Exception as e:
-            print(f"Failed to updating break label: {e}")
-            return None
+                print("🔄 Updating break button title and color")
 
+                # Update button title
+                self.update_break_button_title(f"Time: {self.BreakTime}", NSColor.whiteColor())
+
+                # Update button background color to green
+                self.set_break_button_color(NSColor.systemGreenColor())
+
+        except Exception as e:
+            print(f"❌ Failed to update break label: {e}")
+            
+            
+        def cleanup(self):
+            try:
+                print("🧹 Performing GUIApp cleanup...")
+                self.breakActive = False
+                self.is_timer_running = False
+                # Add any additional shutdown logic here (threads, sockets, etc.)
+                # Example:
+                # if hasattr(self, "sio"):
+                #     self.sio.disconnect()
+            except Exception as e:
+                print("⚠️ Cleanup failed:", e)
+    
+    
+    def applicationShouldTerminate_(self, sender):
+        if getattr(self, "is_timer_running", False):
+            print("🛑 Timer running, pausing before quit...")
+            self.click_pause_button()
+
+        print("✅ App quitting via Cmd+Q")
+        return NSTerminateNow  # or just return 1
+ 
+    def windowWillClose_(self, notification):
+        print("🪟 Window closed. Exiting app.")
+        NSApp.terminate_(self)
+    
+    
 def main():
     app = NSApplication.sharedApplication()
     delegate = GUIApp.alloc().init()

@@ -17,10 +17,18 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.1.3</string>
 	<key>CFBundleVersion</key>
-	<string>1.0.0</string>
+	<string>1.1.3</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>SStrack needs access to detect your active application and take screenshots.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SStrack uses the screen to capture productivity screenshots.</string>
 	<key>NSHighResolutionCapable</key>
 	<string>True</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
 </dict>
 </plist>
