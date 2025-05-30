@@ -14,9 +14,9 @@ from Cocoa import (
 
 from AppKit import (
     NSMutableAttributedString, NSForegroundColorAttributeName,
-    NSPopUpButton, NSButtonCell, NSBezierPath, NSAttributedString,
+    NSPopUpButton, NSWorkspace, NSBezierPath, NSAttributedString,
     NSDictionary, NSImageScaleProportionallyUpOrDown,
-    NSImageView, NSImage, NSAlert, NSApp, NSTerminateNow, NSMenu, NSMenuItem, NSApp
+    NSImageView, NSImage, NSAlert, NSApp, NSTerminateNow, NSMenu, NSMenuItem, NSButton, NSButtonTypeSwitch
 )
 
 from Quartz import (
@@ -652,32 +652,28 @@ class GUIApp(NSObject):
         return resized
 
 
-
     @objc.typedSelector(b"v@:@")
     def openSettings_(self, sender):
-        print("✅ Test button clicked!")
-        
-            # Safely close existing popup if already open
+        print("✅ Settings opened!")
+
         if hasattr(self, "test_popup") and self.test_popup is not None:
             self.test_popup.close()
             self.test_popup = None
 
-        # Create the popup window
         self.test_popup = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
-            NSMakeRect(250, 250, 700, 340),  # Same size
-            15,  # Titled, Closable
+            NSMakeRect(250, 250, 700, 340),
+            15,
             2,
             False
         )
         self.test_popup.setTitle_("Settings")
         self.test_popup.makeKeyAndOrderFront_(None)
 
-        # Content View
         content = self.test_popup.contentView()
         content.setWantsLayer_(True)
         content.layer().setBackgroundColor_(NSColor.colorWithCalibratedRed_green_blue_alpha_(0.06, 0.28, 0.45, 1.0).CGColor())
 
-        # --- Header Logo (small) ---
+        # --- Header Logo ---
         settings_icon_path = self.resource_path("images/logoTray.png")
         if os.path.exists(settings_icon_path):
             icon_image = NSImage.alloc().initByReferencingFile_(settings_icon_path)
@@ -687,7 +683,7 @@ class GUIApp(NSObject):
             icon_view.setImageScaling_(2)
             content.addSubview_(icon_view)
 
-        # --- Title Label ---
+        # --- Title ---
         title_label = NSTextField.alloc().initWithFrame_(NSMakeRect(50, 310, 200, 20))
         title_label.setStringValue_("Settings")
         title_label.setFont_(NSFont.systemFontOfSize_(14))
@@ -698,45 +694,38 @@ class GUIApp(NSObject):
         title_label.setTextColor_(NSColor.whiteColor())
         content.addSubview_(title_label)
 
-        # --- Close Button ("X") ---
+        # --- Close Button ---
         self.close_button = NSButton.alloc().initWithFrame_(NSMakeRect(660, 310, 20, 20))
         self.close_button.setTitle_("X")
         self.close_button.setFont_(NSFont.boldSystemFontOfSize_(14))
         self.close_button.setBezelStyle_(0)
         self.close_button.setBordered_(False)
         self.close_button.setWantsLayer_(True)
-
-        # ✅ Background Black
         self.close_button.layer().setBackgroundColor_(NSColor.blackColor().CGColor())
 
-        # ✅ Text White
         text_attr = NSMutableAttributedString.alloc().initWithString_("X")
-        text_attr.addAttribute_value_range_(
-            NSForegroundColorAttributeName,
-            NSColor.whiteColor(),
-            (0, 1)
-        )
+        text_attr.addAttribute_value_range_(NSForegroundColorAttributeName, NSColor.whiteColor(), (0, 1))
         self.close_button.setAttributedTitle_(text_attr)
-
         self.close_button.setTarget_(self)
         self.close_button.setAction_("closeTestPopup:")
         content.addSubview_(self.close_button)
 
-        # --- Field Labels (White Text) ---
-        field_names = [
-            ("Launch on Startup", 250),
-            ("Auto-start Tracking", 220),
-            ("Screenshots:", 180),
-            ("Auto-pause:", 150),
-            ("Weekly limit:", 120),
-            ("Allow Offline Time:", 90),
-            ("Activity Level Tracking:", 60),
-            ("App & URL Tracking:", 30)
+        # --- Settings Labels + Checkboxes ---
+        field_data = [
+            ("Launch on Startup", "checkbox_launch", 250),
+            ("Auto-start Tracking", "checkbox_autostart", 220),
+            ("Screenshots", "checkbox_screenshots", 180),
+            ("Auto-pause", "checkbox_autopause", 150),
+            ("Weekly limit", "checkbox_weeklylimit", 120),
+            ("Allow Offline Time", "checkbox_offline", 90),
+            ("Activity Level Tracking", "checkbox_activity", 60),
+            ("App & URL Tracking", "checkbox_appurl", 30)
         ]
 
-        for text, y in field_names:
-            field = NSTextField.alloc().initWithFrame_(NSMakeRect(30, y, 300, 20))
-            field.setStringValue_(text)
+        for label_text, attr_name, y in field_data:
+            # Label
+            field = NSTextField.alloc().initWithFrame_(NSMakeRect(30, y, 250, 20))
+            field.setStringValue_(label_text)
             field.setFont_(NSFont.systemFontOfSize_(12))
             field.setBezeled_(False)
             field.setDrawsBackground_(False)
@@ -744,6 +733,17 @@ class GUIApp(NSObject):
             field.setSelectable_(False)
             field.setTextColor_(NSColor.whiteColor())
             content.addSubview_(field)
+
+            # Checkbox
+            checkbox = NSButton.alloc().initWithFrame_(NSMakeRect(300, y, 20, 20))
+            checkbox.setButtonType_(NSButtonTypeSwitch)
+            checkbox.setTitle_("")
+            checkbox.setState_(0)
+            content.addSubview_(checkbox)
+
+            # Save reference for future use
+            setattr(self, attr_name, checkbox)
+
 
     @objc.typedSelector(b"v@:@")
     def closeTestPopup_(self, sender):
@@ -1730,7 +1730,9 @@ class GUIApp(NSObject):
                     print(f"💾 Screenshot converted to bytes ({len(screenshot_data)} bytes)")
     
                 active_window_url = self.get_active_window_hostname()
-                print(f"🧭 Active Window: {active_window_url}")
+                print(f"🧭 Active Window: {active_window_url if active_window_url else '⚠️ Not Detected'}")
+                if not active_window_url:
+                    active_window_url = "Unknown" 
                 print(f"🆔 Current user_id: {self.user_id}")
                 if active_window_url:
                     time_entry_id_path = GUIApp.get_data_file_path("time_entry_id.pkl")
@@ -1982,54 +1984,43 @@ class GUIApp(NSObject):
 
     def get_active_window_hostname(self):
         try:
-            if platform.system() == "Windows":
+            if platform.system() == "Darwin":
+                # Try AppleScript first
                 try:
-                    active_window = gw.getActiveWindow()
-                    if active_window:
-                        print(f"active window", active_window.title)
-                        hostname = active_window.title.split(" - ")[0].strip()
-                        return hostname
-                    else:
-                        return None
-                except gw.PyGetWindowException:
-                    return None
-            elif platform.system() == "Linux":
-                try:
-                    active_window = ewmh.getActiveWindow()
-                    if active_window:
-                        window_class = active_window.get_wm_class()
-                        window_name = active_window.get_wm_name()
-                        hostname = f"{window_class[0]} - {window_name}".split(" - ")[
-                            0
-                        ].strip()
-                        return hostname
-                    else:
-                        return None
-                except ewmh.EWMHException:
-                    return None
-            elif platform.system() == "Darwin":
-                # try:
-                # from AppKit import NSWorkspace
-                #     active_app_name = NSWorkspace.sharedWorkspace().activeApplication()['NSApplicationName']
-                #     return active_app_name
-                # except ImportError:
-                #     return None
-                try:
-                    active_app_name = subprocess.check_output(
+                    output = subprocess.check_output(
                         [
                             "osascript",
                             "-e",
+                            'try',
+                            "-e",
                             'tell application "System Events" to name of first application process whose frontmost is true',
-                        ]
-                    ).strip()
-                    return active_app_name
-                except subprocess.CalledProcessError:
-                    pass
+                            "-e",
+                            'on error',
+                            "-e",
+                            'return "None"',
+                            "-e",
+                            'end try'
+                        ],
+                        stderr=subprocess.DEVNULL
+                    ).decode("utf-8").strip()
+
+                    if output.lower() != "none" and output != "":
+                        return output
+                except Exception as e:
+                    print(f"AppleScript failed: {e}")
+
+                # Fallback to NSWorkspace (won’t always give correct app name, but better than None)
+                try:
+                    active_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+                    if active_app:
+                        return active_app.localizedName()
+                except Exception as e:
+                    print(f"NSWorkspace fallback failed: {e}")
+
             return None
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"❗ get_active_window_hostname error: {e}")
             return "N/A"
-
     def load_icon_with_margin(self, image_path, width, height, margin):
         """Loads, resizes, and adds a transparent margin to an icon."""
         try:
