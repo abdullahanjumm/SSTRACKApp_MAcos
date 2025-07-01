@@ -1149,7 +1149,7 @@ class GUIApp(NSObject):
                         data = response.json()
                         print("project updated", data)
                     else:
-                        print("not success")
+                        print("not success") 
         except Exception as e:
             print(f"An error occurred updateProject: {e}")
             return None
